@@ -1,0 +1,9 @@
+[submodule "services/CommunityService"]
+	path = services/CommunityService
+	url = https://github.com/MillionChau/CommunityService.git
+[submodule "services/QualityService"]
+	path = services/QualityService
+	url = https://github.com/MillionChau/QualityService.git
+[submodule "services/CrawlerGithubService"]
+	path = services/CrawlerGithubService
+	url = https://github.com/MillionChau/CrawlerGithubService.git
