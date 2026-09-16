@@ -7,3 +7,7 @@
 [submodule "services/CrawlerGithubService"]
 	path = services/CrawlerGithubService
 	url = https://github.com/MillionChau/CrawlerGithubService.git
+[submodule "services/IdentityService"]
+	path = services/IdentityService
+	url = https://github.com/MillionChau/IdentityService.git
+	
