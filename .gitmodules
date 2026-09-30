@@ -11,3 +11,6 @@
 	path = services/IdentityService
 	url = https://github.com/MillionChau/IdentityService.git
 	
+[submodule "services/NotificationService"]
+	path = services/NotificationService
+	url = https://github.com/MillionChau/NotificationService.git
