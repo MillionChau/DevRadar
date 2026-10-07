@@ -239,7 +239,7 @@ Kiểm duyệt & chấm điểm nội dung bằng AI (ML models).
 
 **Body mẫu — analyze:**
 ```json
-{ "text": "Nội dung bài viết cần kiểm duyệt..." }
+{ "content": "Nội dung bài viết cần kiểm duyệt..." }
 ```
 
 ---

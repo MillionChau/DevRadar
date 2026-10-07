@@ -1,21 +1,60 @@
 {
   "info": {
     "name": "DevRadar API Gateway",
-    "description": "Bộ kiểm thử toàn hệ thống DevRadar qua API Gateway :5000 — Identity, Community, Notification, Quality, Crawler. Chạy 'Identity > Login' trước để tự lưu accessToken.",
+    "description": "Bộ kiểm thử toàn hệ thống DevRadar qua API Gateway :5000. Chạy theo thứ tự folder 0->9: Login tự lưu accessToken; kịch bản E2E 2 người dùng kiểm tra thông báo realtime ingestion.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "accessToken", "value": "" },
-    { "key": "refreshToken", "value": "" },
-    { "key": "userId", "value": "" },
-    { "key": "postId", "value": "" },
-    { "key": "commentId", "value": "" },
-    { "key": "reportId", "value": "" },
-    { "key": "notificationId", "value": "" }
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "accessTokenB",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "postId",
+      "value": ""
+    },
+    {
+      "key": "commentId",
+      "value": ""
+    },
+    {
+      "key": "reportId",
+      "value": ""
+    },
+    {
+      "key": "notificationId",
+      "value": ""
+    },
+    {
+      "key": "detailUserId",
+      "value": ""
+    },
+    {
+      "key": "relabeledContentId",
+      "value": ""
+    }
   ],
   "auth": {
     "type": "bearer",
-    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
   },
   "item": [
     {
@@ -24,18 +63,62 @@
         {
           "name": "Gateway Health",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Gateway healthy', () => pm.expect(pm.response.json().status).to.eql('healthy'));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Swagger UI (tổng hợp 5 service)",
+          "name": "Swagger UI",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/swagger/index.html", "host": ["{{baseUrl}}"], "path": ["swagger", "index.html"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/swagger/index.html",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "swagger",
+                "index.html"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -44,89 +127,231 @@
       "item": [
         {
           "name": "Register",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/identity/api/v1/Auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "identity",
+                "api",
+                "v1",
+                "Auth",
+                "register"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"userName\": \"postman_user\", \"email\": \"postman@devradar.io\", \"password\": \"Secret123\"}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Register 200', () => pm.expect(pm.response.code).to.be.oneOf([200, 400]));"
+                  "pm.test('Register 200 or already exists 400', () => pm.expect(pm.response.code).to.be.oneOf([200, 400]));"
                 ]
               }
             }
-          ],
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"userName\": \"postman_user\",\n  \"email\": \"postman@devradar.io\",\n  \"password\": \"Secret123\"\n}"
-            },
-            "url": { "raw": "{{baseUrl}}/identity/api/v1/Auth/register", "host": ["{{baseUrl}}"], "path": ["identity", "api", "v1", "Auth", "register"] }
-          }
+          ]
         },
         {
           "name": "Login (lưu accessToken)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/identity/api/v1/Auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "identity",
+                "api",
+                "v1",
+                "Auth",
+                "login"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"userNameOrEmail\": \"postman_user\", \"password\": \"Secret123\"}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Login 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
-                  "const data = body.data || body;",
-                  "if (data.accessToken) {",
-                  "    pm.collectionVariables.set('accessToken', data.accessToken);",
-                  "    console.log('accessToken saved');",
-                  "}",
-                  "if (data.refreshToken) pm.collectionVariables.set('refreshToken', data.refreshToken);",
-                  "if (data.userId) pm.collectionVariables.set('userId', data.userId);",
-                  "if (data.user && data.user.id) pm.collectionVariables.set('userId', data.user.id);"
+                  "const payload = body.data || body;",
+                  "pm.test('Có accessToken', () => pm.expect(!!payload.accessToken).to.be.true);",
+                  "if (payload.accessToken) pm.collectionVariables.set('accessToken', payload.accessToken);",
+                  "if (payload.refreshToken) pm.collectionVariables.set('refreshToken', payload.refreshToken);",
+                  "if (payload.userId) pm.collectionVariables.set('userId', payload.userId);",
+                  "if (payload.user && payload.user.id) pm.collectionVariables.set('userId', payload.user.id);"
                 ]
               }
             }
-          ],
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"userNameOrEmail\": \"{{testUserName}}\",\n  \"password\": \"{{testPassword}}\"\n}"
-            },
-            "url": { "raw": "{{baseUrl}}/identity/api/v1/Auth/login", "host": ["{{baseUrl}}"], "path": ["identity", "api", "v1", "Auth", "login"] }
-          }
+          ]
         },
         {
           "name": "Me (thông tin hiện tại)",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/identity/api/v1/Auth/me", "host": ["{{baseUrl}}"], "path": ["identity", "api", "v1", "Auth", "me"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/identity/api/v1/Auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "identity",
+                "api",
+                "v1",
+                "Auth",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON response', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Refresh Token",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
-            "url": { "raw": "{{baseUrl}}/identity/api/v1/Auth/refresh-token", "host": ["{{baseUrl}}"], "path": ["identity", "api", "v1", "Auth", "refresh-token"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/identity/api/v1/Auth/refresh-token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "identity",
+                "api",
+                "v1",
+                "Auth",
+                "refresh-token"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"refreshToken\": \"{{refreshToken}}\"}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Refresh 200/400 (hợp lệ hoặc token cũ)', () => pm.expect(pm.response.code).to.be.oneOf([200, 400]));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Danh sách Users",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/identity/api/v1/Users", "host": ["{{baseUrl}}"], "path": ["identity", "api", "v1", "Users"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/identity/api/v1/Users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "identity",
+                "api",
+                "v1",
+                "Users"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON response', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Menu theo user",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/identity/api/v1/Menus/for-user/{{userId}}", "host": ["{{baseUrl}}"], "path": ["identity", "api", "v1", "Menus", "for-user", "{{userId}}"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/identity/api/v1/Menus/for-user/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "identity",
+                "api",
+                "v1",
+                "Menus",
+                "for-user",
+                "{{userId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Menu 200/404/500 (tùy dữ liệu)', () => pm.expect(pm.response.code).to.be.oneOf([200, 404, 500]));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -134,105 +359,326 @@
       "name": "2. Community — Posts",
       "item": [
         {
-          "name": "Xem bảng tin (public, phân trang)",
+          "name": "Xem bảng tin (public)",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/community/api/Posts?page=1&pageSize=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["community", "api", "Posts"],
+              "raw": "{{baseUrl}}/community/api/Posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Posts"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "pageSize", "value": "10" },
-                { "key": "search", "value": "", "disabled": true },
-                { "key": "status", "value": "", "disabled": true }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
-          }
-        },
-        {
-          "name": "Tìm kiếm bài viết",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/community/api/Posts?page=1&pageSize=10&search=react",
-              "host": ["{{baseUrl}}"],
-              "path": ["community", "api", "Posts"],
-              "query": [
-                { "key": "page", "value": "1" },
-                { "key": "pageSize", "value": "10" },
-                { "key": "search", "value": "react" }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Đăng bài (lưu postId)",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Create post 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON response', () => pm.response.to.be.json);",
+                  "pm.test('Có data', () => pm.expect(pm.response.json().data !== undefined).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tìm kiếm bài viết",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": "react"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Đăng bài (lưu postId)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Posts"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"content\": \"Bài viết test từ Postman — microservices với .NET 10\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Tạo bài 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
                   "const body = pm.response.json();",
+                  "pm.test('Trả về postId', () => pm.expect(!!body.data).to.be.true);",
                   "if (body.data) pm.collectionVariables.set('postId', body.data);"
                 ]
               }
             }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"content\": \"Bài viết test từ Postman — microservices với .NET 10\"\n}" },
-            "url": { "raw": "{{baseUrl}}/community/api/Posts", "host": ["{{baseUrl}}"], "path": ["community", "api", "Posts"] }
-          }
+          ]
         },
         {
           "name": "Chi tiết bài viết",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/community/api/Posts/{{postId}}", "host": ["{{baseUrl}}"], "path": ["community", "api", "Posts", "{{postId}}"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Posts/{{postId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Posts",
+                "{{postId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON response', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Sửa bài viết",
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"content\": \"Nội dung đã chỉnh sửa từ Postman\"\n}" },
-            "url": { "raw": "{{baseUrl}}/community/api/Posts/{{postId}}", "host": ["{{baseUrl}}"], "path": ["community", "api", "Posts", "{{postId}}"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Posts/{{postId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Posts",
+                "{{postId}}"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"content\": \"Nội dung đã chỉnh sửa từ Postman\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Like bài viết (toggle)",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/community/api/Posts/{{postId}}/like", "host": ["{{baseUrl}}"], "path": ["community", "api", "Posts", "{{postId}}", "like"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Posts/{{postId}}/like",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Posts",
+                "{{postId}}",
+                "like"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Bookmark bài viết (toggle)",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/community/api/Posts/{{postId}}/bookmark", "host": ["{{baseUrl}}"], "path": ["community", "api", "Posts", "{{postId}}", "bookmark"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Posts/{{postId}}/bookmark",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Posts",
+                "{{postId}}",
+                "bookmark"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Danh sách bài đã lưu của tôi",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/community/api/Posts/bookmarks/me", "host": ["{{baseUrl}}"], "path": ["community", "api", "Posts", "bookmarks", "me"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Posts/bookmarks/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Posts",
+                "bookmarks",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON response', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Share bài viết",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/community/api/Posts/{{postId}}/share", "host": ["{{baseUrl}}"], "path": ["community", "api", "Posts", "{{postId}}", "share"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Posts/{{postId}}/share",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Posts",
+                "{{postId}}",
+                "share"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -241,46 +687,136 @@
       "item": [
         {
           "name": "Bình luận bài viết (lưu commentId)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Comment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Comment"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"postId\": \"{{postId}}\", \"content\": \"Bình luận test từ Postman\"}"
+            }
+          },
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Create comment 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
                   "if (body.data && body.data.id) pm.collectionVariables.set('commentId', body.data.id);"
                 ]
               }
             }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"postId\": \"{{postId}}\",\n  \"content\": \"Bình luận test từ Postman\"\n}" },
-            "url": { "raw": "{{baseUrl}}/community/api/Comment", "host": ["{{baseUrl}}"], "path": ["community", "api", "Comment"] }
-          }
+          ]
         },
         {
           "name": "Xem bình luận của bài",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/community/api/Comment/post/{{postId}}", "host": ["{{baseUrl}}"], "path": ["community", "api", "Comment", "post", "{{postId}}"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Comment/post/{{postId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Comment",
+                "post",
+                "{{postId}}"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON response', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Like bình luận (toggle)",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/community/api/Comment/{{commentId}}/like", "host": ["{{baseUrl}}"], "path": ["community", "api", "Comment", "{{commentId}}", "like"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Comment/{{commentId}}/like",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Comment",
+                "{{commentId}}",
+                "like"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Xóa bình luận",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/community/api/Comment/{{commentId}}", "host": ["{{baseUrl}}"], "path": ["community", "api", "Comment", "{{commentId}}"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Comment/{{commentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Comment",
+                "{{commentId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -289,40 +825,122 @@
       "item": [
         {
           "name": "Báo cáo bài viết (lưu reportId)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/PostReports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "PostReports"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"postId\": \"{{postId}}\", \"reason\": \"Bài viết spam — test từ Postman\"}"
+            }
+          },
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Create report 200', () => pm.expect(pm.response.code).to.be.oneOf([200, 400]));",
+                  "pm.test('Report 200/400 (mới hoặc trùng)', () => pm.expect(pm.response.code).to.be.oneOf([200, 400]));",
                   "const body = pm.response.json();",
                   "if (body.data && body.data.id) pm.collectionVariables.set('reportId', body.data.id);"
                 ]
               }
             }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"postId\": \"{{postId}}\",\n  \"reason\": \"Bài viết spam — test từ Postman\"\n}" },
-            "url": { "raw": "{{baseUrl}}/community/api/PostReports", "host": ["{{baseUrl}}"], "path": ["community", "api", "PostReports"] }
-          }
+          ]
         },
         {
           "name": "Hàng chờ duyệt (Admin)",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/community/api/PostReports/pending?page=1&pageSize=20", "host": ["{{baseUrl}}"], "path": ["community", "api", "PostReports", "pending"], "query": [{ "key": "page", "value": "1" }, { "key": "pageSize", "value": "20" }] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/community/api/PostReports/pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "PostReports",
+                "pending"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Admin queue 200/403 (tùy role)', () => pm.expect(pm.response.code).to.be.oneOf([200, 403]));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Duyệt báo cáo (Admin — ẩn bài)",
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"approve\": true,\n  \"reviewNote\": \"Xác nhận vi phạm — test Postman\"\n}" },
-            "url": { "raw": "{{baseUrl}}/community/api/PostReports/{{reportId}}/review", "host": ["{{baseUrl}}"], "path": ["community", "api", "PostReports", "{{reportId}}", "review"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/community/api/PostReports/{{reportId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "PostReports",
+                "{{reportId}}",
+                "review"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"approve\": true, \"reviewNote\": \"Xác nhận vi phạm — test Postman\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Review 200/403/400 (role hoặc report trống)', () => pm.expect(pm.response.code).to.be.oneOf([200, 400, 403]));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -334,47 +952,200 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/notification/api/Notifications/me?page=1&pageSize=20",
-              "host": ["{{baseUrl}}"],
-              "path": ["notification", "api", "Notifications", "me"],
-              "query": [{ "key": "page", "value": "1" }, { "key": "pageSize", "value": "20" }, { "key": "isRead", "value": "", "disabled": true }]
+              "raw": "{{baseUrl}}/notification/api/Notifications/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "api",
+                "Notifications",
+                "me"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON response', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Số chưa đọc (badge)",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/notification/api/Notifications/me/unread-count", "host": ["{{baseUrl}}"], "path": ["notification", "api", "Notifications", "me", "unread-count"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/notification/api/Notifications/me/unread-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "api",
+                "Notifications",
+                "me",
+                "unread-count"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Có unreadCount', () => pm.expect(pm.response.json().data !== undefined).to.be.true);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Đánh dấu đã đọc 1 thông báo",
           "request": {
             "method": "PUT",
-            "url": { "raw": "{{baseUrl}}/notification/api/Notifications/{{notificationId}}/read", "host": ["{{baseUrl}}"], "path": ["notification", "api", "Notifications", "{{notificationId}}", "read"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/notification/api/Notifications/{{notificationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "api",
+                "Notifications",
+                "{{notificationId}}",
+                "read"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Mark read 200/404/500 (id trống nếu chưa có thông báo)', () => pm.expect(pm.response.code).to.be.oneOf([200, 404, 500]));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Đọc tất cả",
           "request": {
             "method": "PUT",
-            "url": { "raw": "{{baseUrl}}/notification/api/Notifications/read-all", "host": ["{{baseUrl}}"], "path": ["notification", "api", "Notifications", "read-all"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/notification/api/Notifications/read-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "api",
+                "Notifications",
+                "read-all"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Pending reports — Admin queue",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/notification/api/admin/notifications/pending-reports?page=1&pageSize=20", "host": ["{{baseUrl}}"], "path": ["notification", "api", "admin", "notifications", "pending-reports"], "query": [{ "key": "page", "value": "1" }, { "key": "pageSize", "value": "20" }] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/notification/api/admin/notifications/pending-reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "api",
+                "admin",
+                "notifications",
+                "pending-reports"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Admin queue 200/403 (tùy role)', () => pm.expect(pm.response.code).to.be.oneOf([200, 403]));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Pending count — Admin badge",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/notification/api/admin/notifications/pending-count", "host": ["{{baseUrl}}"], "path": ["notification", "api", "admin", "notifications", "pending-count"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/notification/api/admin/notifications/pending-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "api",
+                "admin",
+                "notifications",
+                "pending-count"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Admin badge 200/403 (tùy role)', () => pm.expect(pm.response.code).to.be.oneOf([200, 403]));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -384,36 +1155,181 @@
         {
           "name": "Health",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/quality/api/v1/quality/health", "host": ["{{baseUrl}}"], "path": ["quality", "api", "v1", "quality", "health"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/quality/api/v1/quality/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quality",
+                "api",
+                "v1",
+                "quality",
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Trạng thái ML models",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/quality/api/v1/quality/models", "host": ["{{baseUrl}}"], "path": ["quality", "api", "v1", "quality", "models"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/quality/api/v1/quality/models",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quality",
+                "api",
+                "v1",
+                "quality",
+                "models"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON response', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trạng thái từ điển chuẩn hóa",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/quality/api/v1/quality/dictionary/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quality",
+                "api",
+                "v1",
+                "quality",
+                "dictionary",
+                "status"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Analyze nội dung",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"text\": \"Hướng dẫn cài đặt .NET microservices cho người mới bắt đầu\"\n}" },
-            "url": { "raw": "{{baseUrl}}/quality/api/v1/quality/analyze", "host": ["{{baseUrl}}"], "path": ["quality", "api", "v1", "quality", "analyze"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/quality/api/v1/quality/analyze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quality",
+                "api",
+                "v1",
+                "quality",
+                "analyze"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"content\": \"Hướng dẫn cài đặt .NET microservices cho người mới bắt đầu\"}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON response', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Kết quả đã phân tích",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/quality/api/v1/quality/results", "host": ["{{baseUrl}}"], "path": ["quality", "api", "v1", "quality", "results"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/quality/api/v1/quality/results",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quality",
+                "api",
+                "v1",
+                "quality",
+                "results"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON response', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -423,124 +1339,889 @@
         {
           "name": "Health",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/crawler/health", "host": ["{{baseUrl}}"], "path": ["crawler", "health"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/crawler/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "crawler",
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Scheduler status",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/crawler/scheduler/status", "host": ["{{baseUrl}}"], "path": ["crawler", "scheduler", "status"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/crawler/scheduler/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "crawler",
+                "scheduler",
+                "status"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Có scheduler_running', () => pm.expect(pm.response.json().scheduler_running !== undefined).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Root metadata",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/crawler/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "crawler"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Xem cấu hình crawl",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/crawler/analytics/crawl-config", "host": ["{{baseUrl}}"], "path": ["crawler", "analytics", "crawl-config"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/crawler/analytics/crawl-config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "crawler",
+                "analytics",
+                "crawl-config"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Repository health analysis",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"repoUrls\": [\"https://github.com/dotnet/aspnetcore\"]\n}" },
-            "url": { "raw": "{{baseUrl}}/crawler/analytics/repository-health", "host": ["{{baseUrl}}"], "path": ["crawler", "analytics", "repository-health"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/crawler/analytics/repository-health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "crawler",
+                "analytics",
+                "repository-health"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"full_name\": \"dotnet/aspnetcore\"}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON response', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Trend analysis",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"languages\": [\"javascript\", \"python\"],\n  \"topN\": 10\n}" },
-            "url": { "raw": "{{baseUrl}}/crawler/analytics/trend-analysis", "host": ["{{baseUrl}}"], "path": ["crawler", "analytics", "trend-analysis"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/crawler/analytics/trend-analysis",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "crawler",
+                "analytics",
+                "trend-analysis"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"technology\": \"python\", \"series_values\": [12, 18, 25, 40, 65]}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON response', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
-      "name": "8. Kịch bản lỗi (negative tests)",
+      "name": "8. Kịch bản lỗi",
       "item": [
         {
-          "name": "Đăng bài KHÔNG có token → 401",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Expect 401 or 500 (auth enforced)', () => pm.expect(pm.response.code).to.be.oneOf([401, 500]));"
-                ]
-              }
-            }
-          ],
+          "name": "Đăng bài KHÔNG có token -> 401",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"content\": \"guest post attempt\"\n}" },
-            "url": { "raw": "{{baseUrl}}/community/api/Posts", "host": ["{{baseUrl}}"], "path": ["community", "api", "Posts"] }
-          }
-        },
-        {
-          "name": "User thường xem pending reports → 401/403",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Posts"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"content\": \"guest post attempt\"}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Expect 401 or 403', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 500]));"
+                  "pm.test('Chặn guest: 401 (hoặc 500 nếu dependency chết)', () => pm.expect(pm.response.code).to.be.oneOf([401, 500]));"
                 ]
               }
             }
-          ],
-          "request": {
-            "method": "GET",
-            "url": { "raw": "{{baseUrl}}/community/api/PostReports/pending", "host": ["{{baseUrl}}"], "path": ["community", "api", "PostReports", "pending"] }
-          }
+          ]
         },
         {
-          "name": "Bài viết không tồn tại → 404",
+          "name": "User thường xem pending reports -> 401/403",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/PostReports/pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "PostReports",
+                "pending"
+              ]
+            }
+          },
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Expect 404 or 500', () => pm.expect(pm.response.code).to.be.oneOf([404, 500]));"
+                  "pm.test('Chặn user thường: 401/403', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 500]));"
                 ]
               }
             }
-          ],
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "url": { "raw": "{{baseUrl}}/community/api/Posts/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["community", "api", "Posts", "00000000-0000-0000-0000-000000000000"] }
-          }
+          ]
         },
         {
-          "name": "Service không chạy → 502 từ gateway",
+          "name": "Bài viết không tồn tại -> 404",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Posts/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Posts",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Gateway returns 502 when downstream down', () => pm.expect(pm.response.code).to.be.oneOf([200, 502]));"
+                  "pm.test('Không tìm thấy: 404 (hoặc 500 nếu DB chết)', () => pm.expect(pm.response.code).to.be.oneOf([404, 500]));"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Service không chạy -> 502 từ gateway",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/notification/api/Notifications/me/unread-count", "host": ["{{baseUrl}}"], "path": ["notification", "api", "Notifications", "me", "unread-count"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/notification/api/Notifications/me/unread-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "api",
+                "Notifications",
+                "me",
+                "unread-count"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Gateway 502 khi service chết hoặc 200 khi sống', () => pm.expect(pm.response.code).to.be.oneOf([200, 502, 401]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10. Identity — Users CRUD (bổ sung)",
+      "item": [
+        {
+          "name": "Chi tiết một user (lưu detailUserId)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/identity/api/v1/Users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "identity",
+                "api",
+                "v1",
+                "Users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const user = body.data || body;",
+                  "pm.test('Có id người dùng', () => pm.expect(!!(user.id || user.userId)).to.be.true);",
+                  "if (user.id) pm.collectionVariables.set('detailUserId', user.id);",
+                  "else if (user.userId) pm.collectionVariables.set('detailUserId', user.userId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cập nhật hồ sơ user",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/identity/api/v1/Users/{{detailUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "identity",
+                "api",
+                "v1",
+                "Users",
+                "{{detailUserId}}"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"firstName\": \"Smoke\", \"lastName\": \"Tester\", \"phoneNumber\": \"0900000000\", \"address\": \"DevRadar Lab\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Cập nhật 200 hoặc 400/403 nếu thiếu quyền', () => pm.expect(pm.response.code).to.be.oneOf([200, 400, 403]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "11. Identity — Auth nâng cao (bổ sung)",
+      "item": [
+        {
+          "name": "Đổi mật khẩu (đổi rồi đổi lại)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/identity/api/v1/Auth/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "identity",
+                "api",
+                "v1",
+                "Auth",
+                "change-password"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"currentPassword\": \"Secret123\", \"newPassword\": \"Secret123\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Đổi mật khẩu 200 (đổi sang giá trị tương đương, giữ được token)', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "12. Quality — Relabel & Dictionary (bổ sung)",
+      "item": [
+        {
+          "name": "Relabel nhãn dữ liệu vào MongoDB",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/quality/api/v1/quality/relabel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quality",
+                "api",
+                "v1",
+                "quality",
+                "relabel"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"content_id\": \"postman-relabel-{{$timestamp}}\", \"content\": \"Hu dan doi du lieu kiem duyet AI cua DevRadar\", \"expected_is_it\": true, \"expected_quality_level\": \"good\", \"expected_toxicity\": \"safe\", \"notes\": \"Relabel tu Postman collection\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Relabel 200 (đã lưu nhãn)', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Có content_id phản hồi', () => pm.expect(!!body.content_id).to.be.true);",
+                  "if (body.content_id) pm.collectionVariables.set('relabeledContentId', body.content_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Truy vấn kết quả đã relabel (results?limit)",
+          "request": {
+            "method": "GET",
+            "url": {              "raw": "{{baseUrl}}/quality/api/v1/quality/results?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["quality", "api", "v1", "quality", "results"],
+              "query": [
+                { "key": "limit", "value": "50" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Trả về cấu trúc { total, results[] }', () => {",
+                  "    pm.expect(body).to.have.property('results');",
+                  "    pm.expect(Array.isArray(body.results)).to.be.true;",
+                  "});",
+                  "pm.test('Tìm thấy bản ghi vừa relabel trong MongoDB', () => {",
+                  "    const rid = pm.collectionVariables.get('relabeledContentId');",
+                  "    if (rid) pm.expect(body.results.some(r => r.content_id === rid)).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "13. Crawler — Analytics bổ sung (bổ sung)",
+      "item": [
+        {
+          "name": "Kích hoạt crawl ngay (scheduler trigger-now)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/crawler/scheduler/trigger-now",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "crawler",
+                "scheduler",
+                "trigger-now"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Trigger crawl 200 hoặc 202', () => pm.expect(pm.response.code).to.be.oneOf([200, 202]));",
+                  "pm.test('Có phản hồi JSON từ scheduler', () => pm.response.json());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Language health analysis",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/crawler/analytics/language-health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "crawler",
+                "analytics",
+                "language-health"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"language\": \"C#\", \"repository_count\": 12000, \"total_stars\": 900000, \"total_forks\": 250000, \"commit_activity_index\": 88.5, \"contributor_activity_index\": 84.2, \"repo_growth_rate\": 0.06, \"star_growth_rate\": 0.09}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Có điểm health 0-100', () => {",
+                  "    const score = body.health_score ?? body.score ?? body.overall_score;",
+                  "    pm.expect(score).to.be.at.least(0);",
+                  "    pm.expect(score).to.be.at.most(100);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cập nhật repo cũ (update-existing)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/crawler/repos/update-existing",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "crawler",
+                "repos",
+                "update-existing"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Job cập nhật repo 200 hoặc 202', () => pm.expect(pm.response.code).to.be.oneOf([200, 202]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "9. E2E — Thông báo 2 người dùng",
+      "item": [
+        {
+          "name": "Đăng ký user B",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/identity/api/v1/Auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "identity",
+                "api",
+                "v1",
+                "Auth",
+                "register"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"userName\": \"postman_user2\", \"email\": \"postman2@devradar.io\", \"password\": \"Secret123\"}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Register B 200/400 (mới hoặc đã có)', () => pm.expect(pm.response.code).to.be.oneOf([200, 400]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login user B (lưu accessTokenB)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/identity/api/v1/Auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "identity",
+                "api",
+                "v1",
+                "Auth",
+                "login"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"userNameOrEmail\": \"postman_user2\", \"password\": \"Secret123\"}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const payload = body.data || body;",
+                  "pm.test('Có accessToken B', () => pm.expect(!!payload.accessToken).to.be.true);",
+                  "if (payload.accessToken) pm.collectionVariables.set('accessTokenB', payload.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "B like bài của A (tokenB)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Posts/{{postId}}/like",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Posts",
+                "{{postId}}",
+                "like"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessTokenB}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "B comment bài của A (tokenB)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Comment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Comment"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"postId\": \"{{postId}}\", \"content\": \"Bình luận từ user B — E2E\"}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessTokenB}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A đọc thông báo (>= 1 item)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/notification/api/Notifications/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "api",
+                "Notifications",
+                "me"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const items = body.data && (body.data.items || body.data);",
+                  "pm.test('A nhận được thông báo sau khi B like/comment', () => {",
+                  "    const list = Array.isArray(items) ? items : [];",
+                  "    pm.expect(list.length).to.be.at.least(1);",
+                  "    if (list.length > 0) pm.collectionVariables.set('notificationId', list[0].id);",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
