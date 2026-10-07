@@ -1,0 +1,163 @@
+{
+  "ReverseProxy": {
+    "Routes": {
+      "identity-route": {
+        "ClusterId": "identity-cluster",
+        "Match": {
+          "Path": "/identity/{**catch-all}"
+        },
+        "Transforms": [
+          { "PathRemovePrefix": "/identity" },
+          { "RequestHeader": "X-Forwarded-Prefix", "Set": "/identity" }
+        ],
+        "RateLimiterPolicy": "global-rate-limit"
+      },
+      "community-route": {
+        "ClusterId": "community-cluster",
+        "Match": {
+          "Path": "/community/{**catch-all}"
+        },
+        "Transforms": [
+          { "PathRemovePrefix": "/community" },
+          { "RequestHeader": "X-Forwarded-Prefix", "Set": "/community" }
+        ],
+        "RateLimiterPolicy": "global-rate-limit"
+      },
+      "community-hub-route": {
+        "ClusterId": "community-cluster",
+        "Match": {
+          "Path": "/community/hubs/community/{**catch-all}"
+        },
+        "Transforms": [
+          { "PathPattern": "/hubs/community/{**catch-all}" }
+        ],
+        "RateLimiterPolicy": "global-rate-limit"
+      },
+      "notification-route": {
+        "ClusterId": "notification-cluster",
+        "Match": {
+          "Path": "/notification/{**catch-all}"
+        },
+        "Transforms": [
+          { "PathRemovePrefix": "/notification" },
+          { "RequestHeader": "X-Forwarded-Prefix", "Set": "/notification" }
+        ],
+        "RateLimiterPolicy": "global-rate-limit"
+      },
+      "notification-hub-route": {
+        "ClusterId": "notification-cluster",
+        "Match": {
+          "Path": "/notification/hubs/notifications/{**catch-all}"
+        },
+        "Transforms": [
+          { "PathPattern": "/hubs/notifications/{**catch-all}" }
+        ],
+        "RateLimiterPolicy": "global-rate-limit"
+      },
+      "crawler-route": {
+        "ClusterId": "crawler-cluster",
+        "Match": {
+          "Path": "/crawler/{**catch-all}"
+        },
+        "Transforms": [
+          { "PathRemovePrefix": "/crawler" },
+          { "RequestHeader": "X-Forwarded-Prefix", "Set": "/crawler" }
+        ],
+        "RateLimiterPolicy": "crawler-rate-limit"
+      },
+      "quality-route": {
+        "ClusterId": "quality-cluster",
+        "Match": {
+          "Path": "/quality/{**catch-all}"
+        },
+        "Transforms": [
+          { "PathRemovePrefix": "/quality" },
+          { "RequestHeader": "X-Forwarded-Prefix", "Set": "/quality" }
+        ],
+        "RateLimiterPolicy": "global-rate-limit"
+      }
+    },
+    "Clusters": {
+      "identity-cluster": {
+        "Destinations": {
+          "destination1": {
+            "Address": "http://localhost:5002"
+          }
+        },
+        "HealthCheck": {
+          "Active": {
+            "Enabled": true,
+            "Interval": "00:00:30",
+            "Timeout": "00:00:05",
+            "Policy": "ConsecutiveFailures",
+            "Path": "/swagger/index.html"
+          }
+        }
+      },
+      "community-cluster": {
+        "Destinations": {
+          "destination1": {
+            "Address": "http://localhost:5145"
+          }
+        },
+        "HealthCheck": {
+          "Active": {
+            "Enabled": true,
+            "Interval": "00:00:30",
+            "Timeout": "00:00:05",
+            "Policy": "ConsecutiveFailures",
+            "Path": "/swagger/index.html"
+          }
+        }
+      },
+      "notification-cluster": {
+        "Destinations": {
+          "destination1": {
+            "Address": "http://localhost:5003"
+          }
+        },
+        "HealthCheck": {
+          "Active": {
+            "Enabled": true,
+            "Interval": "00:00:30",
+            "Timeout": "00:00:05",
+            "Policy": "ConsecutiveFailures",
+            "Path": "/swagger/index.html"
+          }
+        }
+      },
+      "crawler-cluster": {
+        "Destinations": {
+          "destination1": {
+            "Address": "http://localhost:8000"
+          }
+        },
+        "HealthCheck": {
+          "Active": {
+            "Enabled": true,
+            "Interval": "00:00:30",
+            "Timeout": "00:00:05",
+            "Policy": "ConsecutiveFailures",
+            "Path": "/"
+          }
+        }
+      },
+      "quality-cluster": {
+        "Destinations": {
+          "destination1": {
+            "Address": "http://localhost:8001"
+          }
+        },
+        "HealthCheck": {
+          "Active": {
+            "Enabled": true,
+            "Interval": "00:00:30",
+            "Timeout": "00:00:05",
+            "Policy": "ConsecutiveFailures",
+            "Path": "/api/v1/quality/health"
+          }
+        }
+      }
+    }
+  }
+}

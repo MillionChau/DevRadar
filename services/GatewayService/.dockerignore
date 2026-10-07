@@ -1,0 +1,9 @@
+bin/
+obj/
+.git/
+.vs/
+.vscode/
+*.user
+*.md
+postman/
+Properties/launchSettings.json
