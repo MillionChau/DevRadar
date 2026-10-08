@@ -105,6 +105,23 @@ docker compose down
 docker compose down -v
 ```
 
+### Kiểm thử hệ thống (smoke + E2E test)
+Script kiểm tra container, health 6 service, định tuyến Gateway và luồng E2E
+(register → login → refresh → me → đăng bài → like/bookmark → comment → report → quality analyze → notification → cleanup), toàn bộ qua API Gateway:
+
+```powershell
+# Windows PowerShell
+.\scripts\run-tests.ps1
+
+# Chỉ health check, bỏ luồng E2E
+.\scripts\run-tests.ps1 -SkipE2E
+```
+
+```bash
+# Linux / macOS / Git Bash
+pwsh ./scripts/run-tests.ps1
+```
+
 ---
 
 ## 💻 5. Phương Pháp 2: Chạy Từng Service Riêng Lẻ (Local Development)

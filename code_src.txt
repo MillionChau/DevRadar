@@ -1,0 +1,623 @@
+services/
+├── CommunityService/
+│   ├── .github/
+│   │   └── workflows/
+│   │       └── dotnet.yml
+│   ├── src/
+│   │   ├── Community.API/
+│   │   │   ├── Controllers/
+│   │   │   │   ├── ApiControllerBase.cs
+│   │   │   │   ├── CommentController.cs
+│   │   │   │   ├── PostReportsController.cs
+│   │   │   │   └── PostsController.cs
+│   │   │   ├── Hubs/
+│   │   │   │   └── CommunityHub.cs
+│   │   │   ├── Middleware/
+│   │   │   │   ├── ExceptionHandlingMiddleware.cs
+│   │   │   │   └── RequestLoggingMiddleware.cs
+│   │   │   ├── Properties/
+│   │   │   │   └── launchSettings.json
+│   │   │   ├── RealTime/
+│   │   │   │   └── SignalRNotifier.cs
+│   │   │   ├── appsettings.Development.json
+│   │   │   ├── appsettings.json
+│   │   │   ├── Community.API.csproj
+│   │   │   ├── Community.API.http
+│   │   │   └── Program.cs
+│   │   ├── Community.Application/
+│   │   │   ├── Common/
+│   │   │   │   ├── Behaviors/
+│   │   │   │   │   └── ValidationBehavior.cs
+│   │   │   │   ├── Exceptions/
+│   │   │   │   │   ├── ForbiddenException.cs
+│   │   │   │   │   ├── NotFoundException.cs
+│   │   │   │   │   └── ValidationException.cs
+│   │   │   │   ├── Mappings/
+│   │   │   │   │   └── MappingProfile.cs
+│   │   │   │   └── Models/
+│   │   │   │       ├── PagedResponse.cs
+│   │   │   │       └── ResponseModel.cs
+│   │   │   ├── DTOs/
+│   │   │   │   ├── Comment/
+│   │   │   │   │   └── CommentDto.cs
+│   │   │   │   ├── Post/
+│   │   │   │   │   └── PostDto.cs
+│   │   │   │   └── PostReport/
+│   │   │   │       └── PostReportDto.cs
+│   │   │   ├── Features/
+│   │   │   │   ├── Comments/
+│   │   │   │   │   ├── Commands/
+│   │   │   │   │   │   ├── CreateComment/
+│   │   │   │   │   │   │   └── CreateCommentCommand.cs
+│   │   │   │   │   │   ├── DeleteComment/
+│   │   │   │   │   │   │   └── DeleteCommentCommand.cs
+│   │   │   │   │   │   └── ToggleCommentLike/
+│   │   │   │   │   │       └── ToggleCommentLikeCommand.cs
+│   │   │   │   │   ├── Queries/
+│   │   │   │   │   │   └── GetCommentsByPost/
+│   │   │   │   │   │       └── GetCommentsByPostQuery.cs
+│   │   │   │   │   └── Query/
+│   │   │   │   ├── PostReport/
+│   │   │   │   │   ├── Commands/
+│   │   │   │   │   │   ├── CreatePostReport/
+│   │   │   │   │   │   │   └── CreatePostReport.cs
+│   │   │   │   │   │   └── ReviewPostReport/
+│   │   │   │   │   │       └── ReviewPostReport.cs
+│   │   │   │   │   ├── Queries/
+│   │   │   │   │   │   └── GetPendingReports/
+│   │   │   │   │   │       └── GetPendingReportsQuery.cs
+│   │   │   │   │   └── Query/
+│   │   │   │   └── Posts/
+│   │   │   │       ├── Commands/
+│   │   │   │       │   ├── CreatePost/
+│   │   │   │       │   │   └── CreatePostCommand.cs
+│   │   │   │       │   ├── DeletePost/
+│   │   │   │       │   │   └── DeletePostCommand.cs
+│   │   │   │       │   ├── SharePost/
+│   │   │   │       │   │   └── SharePostCommand.cs
+│   │   │   │       │   ├── TogglePostBookmark/
+│   │   │   │       │   │   └── TogglePostBookmarkCommand.cs
+│   │   │   │       │   ├── TogglePostLike/
+│   │   │   │       │   │   └── TogglePostLikeCommand.cs
+│   │   │   │       │   └── UpdatePost/
+│   │   │   │       │       └── UpdatePostCommand.cs
+│   │   │   │       └── Queries/
+│   │   │   │           ├── GetMyBookmarks/
+│   │   │   │           │   └── GetMyBookmarksQuery.cs
+│   │   │   │           ├── GetPostById/
+│   │   │   │           │   └── GetPostByIdQuery.cs
+│   │   │   │           └── GetPosts/
+│   │   │   │               └── GetPostsQuery.cs
+│   │   │   ├── Interfaces/
+│   │   │   │   ├── IApplicationDbContext.cs
+│   │   │   │   ├── IContentModerationService.cs
+│   │   │   │   ├── ICurrentUserService.cs
+│   │   │   │   ├── INotificationClient.cs
+│   │   │   │   └── IRealTimeNotifier.cs
+│   │   │   ├── Community.Application.csproj
+│   │   │   └── DependencyInjection.cs
+│   │   ├── Community.Domain/
+│   │   │   ├── Common/
+│   │   │   │   ├── AuditableEntity.cs
+│   │   │   │   ├── Entity.cs
+│   │   │   │   ├── IAggregateRoot.cs
+│   │   │   │   └── IAuditableEntity.cs
+│   │   │   ├── Contracts/
+│   │   │   │   ├── ICommentLikeRepository.cs
+│   │   │   │   ├── ICommentRepository.cs
+│   │   │   │   ├── IPostBookmarkRepository.cs
+│   │   │   │   ├── IPostLikeRepository.cs
+│   │   │   │   ├── IPostReportRepository.cs
+│   │   │   │   └── IPostRepository.cs
+│   │   │   ├── Entities/
+│   │   │   │   ├── Comment.cs
+│   │   │   │   ├── CommentLike.cs
+│   │   │   │   ├── Post.cs
+│   │   │   │   ├── PostBookmark.cs
+│   │   │   │   ├── PostLike.cs
+│   │   │   │   └── PostReport.cs
+│   │   │   ├── Enums/
+│   │   │   │   ├── ContentStatus.cs
+│   │   │   │   └── ReportStatus.cs
+│   │   │   ├── Events/
+│   │   │   │   └── IDomainEvents.cs
+│   │   │   ├── Interfaces/
+│   │   │   │   ├── IRepository.cs
+│   │   │   │   └── IUnitOfWork.cs
+│   │   │   └── Community.Domain.csproj
+│   │   └── Community.Infrastructure/
+│   │       ├── Base/
+│   │       │   ├── BaseRepository.cs
+│   │       │   ├── IUnitOfWork.cs
+│   │       │   └── UnitOfWork.cs
+│   │       ├── Configurations/
+│   │       │   ├── CommentConfiguration.cs
+│   │       │   ├── CommentLikeConfiguration.cs
+│   │       │   ├── PostBookmarkConfiguration.cs
+│   │       │   ├── PostConfiguration.cs
+│   │       │   ├── PostLikeConfiguration.cs
+│   │       │   └── PostReportConfiguration.cs
+│   │       ├── Interceptors/
+│   │       │   └── AuditableEntityInterceptor.cs
+│   │       ├── Migrations/
+│   │       │   ├── 20260713103017_InitialCreate.cs
+│   │       │   ├── 20260713103017_InitialCreate.Designer.cs
+│   │       │   ├── 20260923062543_AddCommentsAndPostReports.cs
+│   │       │   ├── 20260923062543_AddCommentsAndPostReports.Designer.cs
+│   │       │   ├── 20260924042021_AddLikesAndBookmarks.cs
+│   │       │   ├── 20260924042021_AddLikesAndBookmarks.Designer.cs
+│   │       │   └── CommunityDbContextModelSnapshot.cs
+│   │       ├── Persistence/
+│   │       │   └── CommunityDbContext.cs
+│   │       ├── Repositories/
+│   │       │   ├── CommentLikeRepository.cs
+│   │       │   ├── CommentRepository.cs
+│   │       │   ├── PostBookmarkRepository.cs
+│   │       │   ├── PostLikeRepository.cs
+│   │       │   ├── PostReportRepository.cs
+│   │       │   └── PostRepository.cs
+│   │       ├── Services/
+│   │       │   ├── CurrentUserService.cs
+│   │       │   ├── NotificationHttpClient.cs
+│   │       │   └── StubContentModerationService.cs
+│   │       ├── Settings/
+│   │       │   └── JwtSettings.cs
+│   │       ├── Community.Infrastructure.csproj
+│   │       └── DependencyInjection.cs
+│   ├── tests/
+│   │   └── Community.UnitTests/
+│   │       ├── Features/
+│   │       │   ├── Comments/
+│   │       │   │   ├── CreateCommentCommandHandlerTests.cs
+│   │       │   │   └── DeleteAndGetCommentsHandlerTests.cs
+│   │       │   ├── Interactions/
+│   │       │   │   ├── ShareAndMyBookmarksHandlerTests.cs
+│   │       │   │   └── ToggleLikeAndBookmarkHandlerTests.cs
+│   │       │   ├── PostReport/
+│   │       │   │   └── PostReportHandlerTests.cs
+│   │       │   └── Posts/
+│   │       │       ├── CreatePostCommandHandlerTests.cs
+│   │       │       ├── GetPostByIdQueryHandlerTests.cs
+│   │       │       ├── GetPostsQueryHandlerTests.cs
+│   │       │       └── UpdateDeletePostCommandHandlerTests.cs
+│   │       ├── TestFixtures/
+│   │       │   └── TestFixture.cs
+│   │       └── Community.UnitTests.csproj
+│   ├── .dockerignore
+│   ├── .gitignore
+│   ├── bug.md
+│   ├── Community.slnx
+│   ├── Dockerfile
+│   └── TestAPI.md
+├── CrawlerGithubService/
+│   ├── app/
+│   │   ├── api/
+│   │   │   └── analytics.py
+│   │   ├── core/
+│   │   │   ├── config.py
+│   │   │   ├── crawl_config.json
+│   │   │   ├── crawl_config.py
+│   │   │   ├── github_client.py
+│   │   │   ├── logging.py
+│   │   │   └── request_logging.py
+│   │   ├── core_models/
+│   │   │   ├── data/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── aggregation.py
+│   │   │   │   ├── db_loader.py
+│   │   │   │   └── preprocessing.py
+│   │   │   ├── evaluation/
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── metrics.py
+│   │   │   ├── features/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── language_features.py
+│   │   │   │   ├── repository_features.py
+│   │   │   │   └── trend_features.py
+│   │   │   ├── forecasting/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── arima_model.py
+│   │   │   │   └── forecasting_service.py
+│   │   │   ├── health/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── language_health.py
+│   │   │   │   └── repository_health.py
+│   │   │   ├── persistence/
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── model_manager.py
+│   │   │   ├── trend/
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── trend_analyzer.py
+│   │   │   └── __init__.py
+│   │   ├── db/
+│   │   │   ├── __init__.py
+│   │   │   ├── database.py
+│   │   │   ├── models.py
+│   │   │   └── mongo.py
+│   │   ├── jobs/
+│   │   │   ├── __init__.py
+│   │   │   └── scheduler.py
+│   │   ├── services/
+│   │   │   ├── analyzers/
+│   │   │   │   └── metrics_calculator.py
+│   │   │   ├── extractors/
+│   │   │   │   ├── framework_engine.py
+│   │   │   │   └── structure_scanner.py
+│   │   │   ├── pipelines/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── crawler_pipeline.py
+│   │   │   │   └── repo_updater_pipeline.py
+│   │   │   └── data_cleaner.py
+│   │   ├── __init__.py
+│   │   └── main.py
+│   ├── models/
+│   │   ├── forecasting/
+│   │   ├── language_health/
+│   │   │   └── lang_health_v1.joblib
+│   │   ├── repository_health/
+│   │   │   └── repo_health_v1.joblib
+│   │   └── trend/
+│   ├── tests/
+│   │   ├── test_core_models.py
+│   │   └── test_repo_updater.py
+│   ├── .dockerignore
+│   ├── .env
+│   ├── .gitignore
+│   ├── .uvicornignore
+│   ├── check_mongo_count.py
+│   ├── crawled_data.json
+│   ├── crawler.db
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   ├── run_demo_crawler.py
+│   ├── run_demo_models.py
+│   ├── run_instant_crawl.py
+│   └── run_multi_level_crawler.py
+├── GatewayService/
+│   ├── Middleware/
+│   │   └── RequestLoggingMiddleware.cs
+│   ├── postman/
+│   │   ├── DevRadar.postman_collection.json
+│   │   ├── DevRadar.postman_environment.json
+│   │   ├── newman-result.json
+│   │   ├── package-lock.json
+│   │   ├── package.json
+│   │   └── result.md
+│   ├── Properties/
+│   │   └── launchSettings.json
+│   ├── .dockerignore
+│   ├── API_Documentation.md
+│   ├── appsettings.json
+│   ├── Dockerfile
+│   ├── GatewayService.csproj
+│   ├── Program.cs
+│   └── yarp.json
+├── IdentityService/
+│   ├── src/
+│   │   ├── Identity.API/
+│   │   │   ├── Controllers/
+│   │   │   │   ├── ApiControllerBase.cs
+│   │   │   │   ├── AuthController.cs
+│   │   │   │   ├── MenusController.cs
+│   │   │   │   └── UsersController.cs
+│   │   │   ├── Middleware/
+│   │   │   │   ├── ExceptionHandlingMiddleware.cs
+│   │   │   │   └── RequestLoggingMiddleware.cs
+│   │   │   ├── Properties/
+│   │   │   │   └── launchSettings.json
+│   │   │   ├── .dockerignore
+│   │   │   ├── appsettings.Development.json
+│   │   │   ├── appsettings.json
+│   │   │   ├── Identity.API.csproj
+│   │   │   └── Program.cs
+│   │   ├── Identity.Application/
+│   │   │   ├── Common/
+│   │   │   │   ├── Behaviors/
+│   │   │   │   │   └── ValidationBehavior.cs
+│   │   │   │   ├── Exceptions/
+│   │   │   │   │   ├── BadRequestException.cs
+│   │   │   │   │   ├── NotFoundException.cs
+│   │   │   │   │   ├── UnauthorizedException.cs
+│   │   │   │   │   └── ValidationException.cs
+│   │   │   │   ├── Interfaces/
+│   │   │   │   │   ├── ICurrentUserService.cs
+│   │   │   │   │   ├── IJwtTokenService.cs
+│   │   │   │   │   ├── IOAuthService.cs
+│   │   │   │   │   └── IPasswordHasher.cs
+│   │   │   │   ├── Mappings/
+│   │   │   │   │   └── MappingProfile.cs
+│   │   │   │   └── Models/
+│   │   │   │       └── ResponseModel.cs
+│   │   │   ├── DTOs/
+│   │   │   │   ├── AuthResponseDto.cs
+│   │   │   │   ├── ChangePasswordDto.cs
+│   │   │   │   ├── LoginRequestDto.cs
+│   │   │   │   ├── MenuDto.cs
+│   │   │   │   ├── OAuthUserInfoDto.cs
+│   │   │   │   ├── PermissionDto.cs
+│   │   │   │   ├── RefreshTokenRequestDto.cs
+│   │   │   │   ├── RegisterRequestDto.cs
+│   │   │   │   ├── TokenDto.cs
+│   │   │   │   ├── UpdateUserDto.cs
+│   │   │   │   └── UserDto.cs
+│   │   │   ├── Features/
+│   │   │   │   ├── Auth/
+│   │   │   │   │   ├── Commands/
+│   │   │   │   │   │   ├── ChangePassword/
+│   │   │   │   │   │   │   └── ChangePasswordCommand.cs
+│   │   │   │   │   │   ├── Login/
+│   │   │   │   │   │   │   └── LoginCommand.cs
+│   │   │   │   │   │   ├── OAuthLogin/
+│   │   │   │   │   │   │   └── OAuthLoginCommand.cs
+│   │   │   │   │   │   ├── RefreshToken/
+│   │   │   │   │   │   │   └── RefreshTokenCommand.cs
+│   │   │   │   │   │   ├── Register/
+│   │   │   │   │   │   │   └── RegisterCommand.cs
+│   │   │   │   │   │   └── RevokeToken/
+│   │   │   │   │   │       └── RevokeTokenCommand.cs
+│   │   │   │   │   └── Queries/
+│   │   │   │   │       ├── GetCurrentUser/
+│   │   │   │   │       │   └── GetCurrentUserQuery.cs
+│   │   │   │   │       └── GetOAuthAuthorizeUrl/
+│   │   │   │   │           └── GetOAuthAuthorizeUrlQuery.cs
+│   │   │   │   ├── Menus/
+│   │   │   │   │   └── Queries/
+│   │   │   │   │       └── GetUserMenus/
+│   │   │   │   │           └── GetUserMenusQuery.cs
+│   │   │   │   ├── Permissions/
+│   │   │   │   │   └── Queries/
+│   │   │   │   │       └── GetUserPermissions/
+│   │   │   │   │           └── GetUserPermissionsQuery.cs
+│   │   │   │   └── Users/
+│   │   │   │       ├── Commands/
+│   │   │   │       │   ├── DeleteUser/
+│   │   │   │       │   │   └── DeleteUserCommand.cs
+│   │   │   │       │   └── UpdateUser/
+│   │   │   │       │       └── UpdateUserCommand.cs
+│   │   │   │       └── Queries/
+│   │   │   │           ├── GetUserById/
+│   │   │   │           │   └── GetUserByIdQuery.cs
+│   │   │   │           └── GetUsersByFilter/
+│   │   │   │               └── GetUsersByFilterQuery.cs
+│   │   │   ├── DependencyInjection.cs
+│   │   │   └── Identity.Application.csproj
+│   │   ├── Identity.Domain/
+│   │   │   ├── Common/
+│   │   │   │   ├── AuditableEntity.cs
+│   │   │   │   ├── Entity.cs
+│   │   │   │   ├── IAggregateRoot.cs
+│   │   │   │   └── IAuditableEntity.cs
+│   │   │   ├── Contracts/
+│   │   │   │   ├── IMenuRepository.cs
+│   │   │   │   ├── IPermissionRepository.cs
+│   │   │   │   ├── IRefreshTokenRepository.cs
+│   │   │   │   ├── IRepository.cs
+│   │   │   │   ├── IUnitOfWork.cs
+│   │   │   │   └── IUserRepository.cs
+│   │   │   ├── Entities/
+│   │   │   │   ├── Menu.cs
+│   │   │   │   ├── Permission.cs
+│   │   │   │   ├── RefreshToken.cs
+│   │   │   │   ├── Role.cs
+│   │   │   │   ├── RolePermission.cs
+│   │   │   │   ├── User.cs
+│   │   │   │   ├── UserExternalLogin.cs
+│   │   │   │   └── UserRole.cs
+│   │   │   ├── Enums/
+│   │   │   │   ├── AuthProvider.cs
+│   │   │   │   ├── PermissionType.cs
+│   │   │   │   └── UserStatus.cs
+│   │   │   └── Identity.Domain.csproj
+│   │   └── Identity.Infrastructure/
+│   │       ├── Migrations/
+│   │       │   ├── 20260925040952_InitialIdentityDb.cs
+│   │       │   ├── 20260925040952_InitialIdentityDb.Designer.cs
+│   │       │   └── IdentityDbContextModelSnapshot.cs
+│   │       ├── Persistence/
+│   │       │   ├── Interceptors/
+│   │       │   │   └── AuditableEntityInterceptor.cs
+│   │       │   └── IdentityDbContext.cs
+│   │       ├── Repositories/
+│   │       │   ├── BaseRepository.cs
+│   │       │   ├── MenuRepository.cs
+│   │       │   ├── PermissionRepository.cs
+│   │       │   ├── RefreshTokenRepository.cs
+│   │       │   ├── UnitOfWork.cs
+│   │       │   └── UserRepository.cs
+│   │       ├── Services/
+│   │       │   ├── CurrentUserService.cs
+│   │       │   ├── JwtTokenService.cs
+│   │       │   ├── OAuthService.cs
+│   │       │   └── PasswordHasher.cs
+│   │       ├── Settings/
+│   │       │   ├── JwtSettings.cs
+│   │       │   └── OAuthSettings.cs
+│   │       ├── DependencyInjection.cs
+│   │       └── Identity.Infrastructure.csproj
+│   ├── tests/
+│   │   └── Identity.UnitTests/
+│   │       ├── Features/
+│   │       │   └── Auth/
+│   │       │       ├── LoginCommandHandlerTests.cs
+│   │       │       ├── OAuthLoginCommandHandlerTests.cs
+│   │       │       └── RegisterCommandHandlerTests.cs
+│   │       ├── Services/
+│   │       │   ├── JwtTokenServiceTests.cs
+│   │       │   ├── OAuthServiceTests.cs
+│   │       │   └── PasswordHasherTests.cs
+│   │       └── Identity.UnitTests.csproj
+│   ├── .dockerignore
+│   ├── .gitignore
+│   ├── DevRadar_Identity.postman_collection.json
+│   ├── Dockerfile
+│   ├── Identity.slnx
+│   └── TestAPI.md
+├── NotificationService/
+│   ├── src/
+│   │   ├── Notification.API/
+│   │   │   ├── Controllers/
+│   │   │   │   ├── AdminNotificationsController.cs
+│   │   │   │   ├── InternalNotificationsController.cs
+│   │   │   │   └── NotificationsController.cs
+│   │   │   ├── DTOs/
+│   │   │   │   └── InternalRequests.cs
+│   │   │   ├── Hubs/
+│   │   │   │   └── NotificationsHub.cs
+│   │   │   ├── Middleware/
+│   │   │   │   ├── ExceptionHandlingMiddleware.cs
+│   │   │   │   └── RequestLoggingMiddleware.cs
+│   │   │   ├── Properties/
+│   │   │   │   └── launchSettings.json
+│   │   │   ├── RealTime/
+│   │   │   │   └── SignalRNotifier.cs
+│   │   │   ├── appsettings.json
+│   │   │   ├── Notification.API.csproj
+│   │   │   └── Program.cs
+│   │   ├── Notification.Application/
+│   │   │   ├── Common/
+│   │   │   │   ├── Behaviors/
+│   │   │   │   │   └── ValidationBehavior.cs
+│   │   │   │   ├── Exceptions/
+│   │   │   │   │   ├── ForbiddenException.cs
+│   │   │   │   │   ├── NotFoundException.cs
+│   │   │   │   │   └── ValidationException.cs
+│   │   │   │   ├── Interfaces/
+│   │   │   │   │   ├── ICurrentUserService.cs
+│   │   │   │   │   └── IRealTimeNotifier.cs
+│   │   │   │   ├── Mappings/
+│   │   │   │   │   └── MappingProfile.cs
+│   │   │   │   └── Models/
+│   │   │   │       ├── PagedResponse.cs
+│   │   │   │       └── ResponseModel.cs
+│   │   │   ├── DTOs/
+│   │   │   │   └── NotificationDto.cs
+│   │   │   ├── Features/
+│   │   │   │   └── Notifications/
+│   │   │   │       ├── Commands/
+│   │   │   │       │   ├── MarkAllAsRead/
+│   │   │   │       │   │   └── MarkAllAsReadCommand.cs
+│   │   │   │       │   └── MarkAsRead/
+│   │   │   │       │       └── MarkAsReadCommand.cs
+│   │   │   │       └── Queries/
+│   │   │   │           ├── GetMyNotifications/
+│   │   │   │           │   └── GetMyNotificationsQuery.cs
+│   │   │   │           ├── GetPendingCountForAdmin/
+│   │   │   │           │   └── GetPendingCountForAdminQuery.cs
+│   │   │   │           ├── GetPendingForAdmin/
+│   │   │   │           │   └── GetPendingForAdminQuery.cs
+│   │   │   │           └── GetUnreadCount/
+│   │   │   │               └── GetUnreadCountQuery.cs
+│   │   │   ├── DependencyInjection.cs
+│   │   │   └── Notification.Application.csproj
+│   │   ├── Notification.Domain/
+│   │   │   ├── Contracts/
+│   │   │   │   └── INotificationRepository.cs
+│   │   │   ├── Entities/
+│   │   │   │   └── Notification.cs
+│   │   │   ├── Enums/
+│   │   │   │   └── NotificationType.cs
+│   │   │   └── Notification.Domain.csproj
+│   │   └── Notification.Infrastructure/
+│   │       ├── Configurations/
+│   │       │   └── NotificationConfiguration.cs
+│   │       ├── Migrations/
+│   │       │   ├── 20260929132650_InitialCreate.cs
+│   │       │   ├── 20260929132650_InitialCreate.Designer.cs
+│   │       │   └── NotificationDbContextModelSnapshot.cs
+│   │       ├── Persistence/
+│   │       │   └── NotificationDbContext.cs
+│   │       ├── Repositories/
+│   │       │   └── NotificationRepository.cs
+│   │       ├── Services/
+│   │       │   └── CurrentUserService.cs
+│   │       ├── Settings/
+│   │       │   ├── ApiKeySettings.cs
+│   │       │   └── JwtSettings.cs
+│   │       ├── DependencyInjection.cs
+│   │       └── Notification.Infrastructure.csproj
+│   ├── .dockerignore
+│   ├── .gitignore
+│   ├── Dockerfile
+│   └── Notification.slnx
+└── QualityService/
+    ├── app/
+    │   ├── api/
+    │   │   ├── routes/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── analyze.py
+    │   │   │   └── health.py
+    │   │   └── __init__.py
+    │   ├── clients/
+    │   │   ├── __init__.py
+    │   │   ├── elasticsearch_client.py
+    │   │   └── mongo_client.py
+    │   ├── core/
+    │   │   ├── config.py
+    │   │   ├── logging.py
+    │   │   └── request_logging.py
+    │   ├── dictionaries/
+    │   │   ├── it_keywords.json
+    │   │   └── toxic_keywords.json
+    │   ├── dictionary/
+    │   │   └── aho_corasick.py
+    │   ├── models/
+    │   │   ├── saved/
+    │   │   │   ├── it_classifier.pkl
+    │   │   │   ├── it_vectorizer.pkl
+    │   │   │   ├── toxic_classifier.pkl
+    │   │   │   └── toxic_vectorizer.pkl
+    │   │   ├── it_classifier.py
+    │   │   └── toxic_classifier.py
+    │   ├── pipeline/
+    │   │   ├── classifier.py
+    │   │   ├── cleaner.py
+    │   │   ├── normalizer.py
+    │   │   ├── pipeline.py
+    │   │   ├── quality_analyzer.py
+    │   │   ├── scorer.py
+    │   │   └── tokenizer.py
+    │   ├── rules/
+    │   │   ├── base.py
+    │   │   ├── code_ratio.py
+    │   │   ├── emoji.py
+    │   │   ├── spam.py
+    │   │   └── structure.py
+    │   ├── schemas/
+    │   │   ├── __init__.py
+    │   │   ├── code_analysis.py
+    │   │   ├── domain.py
+    │   │   ├── mlops.py
+    │   │   ├── quality.py
+    │   │   ├── safety.py
+    │   │   ├── semantic.py
+    │   │   ├── tags.py
+    │   │   ├── technical_depth.py
+    │   │   └── user_reputation.py
+    │   ├── services/
+    │   │   └── quality_service.py
+    │   ├── __init__.py
+    │   └── main.py
+    ├── tests/
+    │   ├── __init__.py
+    │   ├── test_api.py
+    │   ├── test_classifiers.py
+    │   ├── test_cleaner.py
+    │   ├── test_core_models.py
+    │   ├── test_normalizer.py
+    │   ├── test_rules.py
+    │   ├── test_scorer.py
+    │   └── test_tokenizer.py
+    ├── .dockerignore
+    ├── .env
+    ├── .gitignore
+    ├── API_Testing_Guide.md
+    ├── DevRadar_QualityService_Development_Prompt.md
+    ├── Dockerfile
+    ├── eval_dataset.py
+    ├── inspect_analysis.py
+    ├── README.md
+    ├── requirements.txt
+    ├── run_data_test.py
+    ├── test_dataset.json
+    ├── train_models.py
+    └── training_dataset.json
