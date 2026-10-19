@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-bg: #090D16;
+    --color-card: #0F172A;
+    --color-elevated: #1E293B;
+    --color-border: #334155;
+    --color-primary: #2563EB;
+    --color-primary-hover: #1D4ED8;
+    --color-secondary: #38BDF8;
+    --color-accent: #818CF8;
+    --color-text-main: #F8FAFC;
+    --color-text-muted: #94A3B8;
+    --color-text-subtle: #64748B;
+  }
+
+  body {
+    background-color: #090D16;
+    color: #F8FAFC;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #090D16;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+}
+
+@layer utilities {
+  .radar-grid {
+    stroke: #334155;
+    stroke-width: 1px;
+  }
+  .radar-fill {
+    fill: rgba(37, 99, 235, 0.25);
+    stroke: #38BDF8;
+    stroke-width: 2px;
+  }
+}
