@@ -3,6 +3,8 @@ import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import { AppIcon } from '../../components/common/Icon';
 
+import { communityApi } from '../../api';
+
 interface LeaderboardUser {
   rank: number;
   displayName: string;
@@ -16,73 +18,37 @@ interface LeaderboardUser {
 
 export const Leaderboard: React.FC = () => {
   const [period, setPeriod] = useState<'weekly' | 'monthly' | 'allTime'>('monthly');
+  const [rankings, setRankings] = useState<LeaderboardUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const topPodium: LeaderboardUser[] = [
-    {
-      rank: 1,
-      displayName: 'Châu Hoàng Tấn',
-      userName: 'chautantan',
-      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100',
-      reputationPoints: 1420,
-      postsCount: 14,
-      starsCount: 320,
-      topBadge: 'Microservices Guru',
-    },
-    {
-      rank: 2,
-      displayName: 'Trần Hoài Nam',
-      userName: 'namtran_ai',
-      avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100',
-      reputationPoints: 1150,
-      postsCount: 11,
-      starsCount: 240,
-      topBadge: 'AI NLP Specialist',
-    },
-    {
-      rank: 3,
-      displayName: 'Lê Minh Triết',
-      userName: 'minhtriet_dev',
-      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100',
-      reputationPoints: 980,
-      postsCount: 9,
-      starsCount: 195,
-      topBadge: 'Crawler Master',
-    },
-  ];
+  React.useEffect(() => {
+    setIsLoading(true);
+    communityApi
+      .getLeaderboard(10, period)
+      .then((data: any[]) => {
+        if (Array.isArray(data)) {
+          const mapped: LeaderboardUser[] = data.map((u, idx) => ({
+            rank: u.rank ?? (idx + 1),
+            displayName: u.displayName || u.fullName || u.username || u.userName || 'Lập trình viên DevRadar',
+            userName: u.username || u.userName || 'developer',
+            avatarUrl: u.avatarUrl || `https://images.unsplash.com/photo-${1534528741775 + idx}?w=100&h=100&fit=crop&crop=faces`,
+            reputationPoints: u.score ?? u.reputationScore ?? 0,
+            postsCount: u.postCount ?? u.postsCount ?? 0,
+            starsCount: u.likeCount ?? u.likesCount ?? 0,
+            topBadge: Array.isArray(u.badges) && u.badges.length > 0 ? u.badges[0] : (u.badge || 'Top Contributor'),
+          }));
+          setRankings(mapped);
+        }
+      })
+      .catch((err) => {
+        console.error('Could not load live leaderboard:', err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [period]);
 
-  const rankings: LeaderboardUser[] = [
-    ...topPodium,
-    {
-      rank: 4,
-      displayName: 'Vũ Quốc Huy',
-      userName: 'quochuy_net',
-      avatarUrl: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=100&h=100',
-      reputationPoints: 850,
-      postsCount: 8,
-      starsCount: 160,
-      topBadge: 'ASP.NET Core',
-    },
-    {
-      rank: 5,
-      displayName: 'Đặng Thanh Tâm',
-      userName: 'tam_frontend',
-      avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&h=100',
-      reputationPoints: 790,
-      postsCount: 7,
-      starsCount: 140,
-      topBadge: 'React & Tailwind',
-    },
-    {
-      rank: 6,
-      displayName: 'Phạm Đức Duy',
-      userName: 'duy_devops',
-      avatarUrl: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=100&h=100',
-      reputationPoints: 720,
-      postsCount: 6,
-      starsCount: 125,
-      topBadge: 'K8s Explorer',
-    },
-  ];
+  const topPodium = rankings.slice(0, 3);
 
   return (
     <div className="flex flex-col gap-8 animate-in fade-in duration-200">
@@ -114,56 +80,72 @@ export const Leaderboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Top 3 Podium Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-        {/* Top 2 */}
-        <Card variant="elevated" padding="md" className="flex flex-col items-center text-center gap-3 order-2 md:order-1 border-surface-border mt-4">
-          <span className="text-xs font-mono font-bold text-text-muted bg-surface-elevated px-2.5 py-1 rounded-full">
-            TOP 2
-          </span>
-          <img
-            src={topPodium[1].avatarUrl}
-            alt={topPodium[1].displayName}
-            className="w-16 h-16 rounded-full border-2 border-slate-400 object-cover"
-          />
-          <h3 className="text-sm font-bold text-text-main">{topPodium[1].displayName}</h3>
-          <Badge variant="reputation">⚡ {topPodium[1].reputationPoints} Rep</Badge>
-          <span className="text-xs text-text-subtle">{topPodium[1].topBadge}</span>
-        </Card>
+      {/* Loading & Empty State Guard */}
+      {isLoading ? (
+        <div className="py-20 flex flex-col items-center justify-center gap-3">
+          <div className="w-8 h-8 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs text-text-muted">Đang tải bảng xếp hạng lập trình viên từ Community DB...</span>
+        </div>
+      ) : rankings.length === 0 ? (
+        <div className="py-20 flex flex-col items-center justify-center gap-2 border border-dashed border-surface-border rounded-xl">
+          <AppIcon name="award" size={32} className="text-text-subtle" />
+          <span className="text-sm font-semibold text-text-main">Chưa có dữ liệu bảng xếp hạng</span>
+          <span className="text-xs text-text-muted">Dữ liệu sẽ được cập nhật tự động khi các thành viên tương tác và đăng bài.</span>
+        </div>
+      ) : (
+        <>
+          {/* Top 3 Podium Cards */}
+          {topPodium.length >= 3 && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+              {/* Top 2 */}
+              <Card variant="elevated" padding="md" className="flex flex-col items-center text-center gap-3 order-2 md:order-1 border-surface-border mt-4">
+                <span className="text-xs font-mono font-bold text-text-muted bg-surface-elevated px-2.5 py-1 rounded-full">
+                  TOP 2
+                </span>
+                <img
+                  src={topPodium[1].avatarUrl}
+                  alt={topPodium[1].displayName}
+                  className="w-16 h-16 rounded-full border-2 border-slate-400 object-cover"
+                />
+                <h3 className="text-sm font-bold text-text-main">{topPodium[1].displayName}</h3>
+                <Badge variant="reputation">⚡ {topPodium[1].reputationPoints} Rep</Badge>
+                <span className="text-xs text-text-subtle">{topPodium[1].topBadge}</span>
+              </Card>
 
-        {/* Top 1 Podium Champion */}
-        <Card variant="elevated" padding="md" className="flex flex-col items-center text-center gap-3 order-1 md:order-2 border-brand-primary/60 bg-gradient-to-b from-brand-primary/10 to-surface-card shadow-xl -mt-2">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/30">
-            <AppIcon name="award" size={14} />
-            <span>QUÁN QUÂN TOP 1</span>
-          </div>
-          <img
-            src={topPodium[0].avatarUrl}
-            alt={topPodium[0].displayName}
-            className="w-20 h-20 rounded-full border-3 border-amber-400 object-cover shadow-lg"
-          />
-          <h3 className="text-base font-bold text-text-main">{topPodium[0].displayName}</h3>
-          <Badge variant="reputation" className="text-sm py-1 px-3">
-            ⚡ {topPodium[0].reputationPoints} Rep
-          </Badge>
-          <span className="text-xs text-brand-secondary font-semibold">{topPodium[0].topBadge}</span>
-        </Card>
+              {/* Top 1 Podium Champion */}
+              <Card variant="elevated" padding="md" className="flex flex-col items-center text-center gap-3 order-1 md:order-2 border-brand-primary/60 bg-gradient-to-b from-brand-primary/10 to-surface-card shadow-xl -mt-2">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/30">
+                  <AppIcon name="award" size={14} />
+                  <span>QUÁN QUÂN TOP 1</span>
+                </div>
+                <img
+                  src={topPodium[0].avatarUrl}
+                  alt={topPodium[0].displayName}
+                  className="w-20 h-20 rounded-full border-3 border-amber-400 object-cover shadow-lg"
+                />
+                <h3 className="text-base font-bold text-text-main">{topPodium[0].displayName}</h3>
+                <Badge variant="reputation" className="text-sm py-1 px-3">
+                  ⚡ {topPodium[0].reputationPoints} Rep
+                </Badge>
+                <span className="text-xs text-brand-secondary font-semibold">{topPodium[0].topBadge}</span>
+              </Card>
 
-        {/* Top 3 */}
-        <Card variant="elevated" padding="md" className="flex flex-col items-center text-center gap-3 order-3 border-surface-border mt-6">
-          <span className="text-xs font-mono font-bold text-text-muted bg-surface-elevated px-2.5 py-1 rounded-full">
-            TOP 3
-          </span>
-          <img
-            src={topPodium[2].avatarUrl}
-            alt={topPodium[2].displayName}
-            className="w-16 h-16 rounded-full border-2 border-amber-700/60 object-cover"
-          />
-          <h3 className="text-sm font-bold text-text-main">{topPodium[2].displayName}</h3>
-          <Badge variant="reputation">⚡ {topPodium[2].reputationPoints} Rep</Badge>
-          <span className="text-xs text-text-subtle">{topPodium[2].topBadge}</span>
-        </Card>
-      </div>
+              {/* Top 3 */}
+              <Card variant="elevated" padding="md" className="flex flex-col items-center text-center gap-3 order-3 border-surface-border mt-6">
+                <span className="text-xs font-mono font-bold text-text-muted bg-surface-elevated px-2.5 py-1 rounded-full">
+                  TOP 3
+                </span>
+                <img
+                  src={topPodium[2].avatarUrl}
+                  alt={topPodium[2].displayName}
+                  className="w-16 h-16 rounded-full border-2 border-amber-700/60 object-cover"
+                />
+                <h3 className="text-sm font-bold text-text-main">{topPodium[2].displayName}</h3>
+                <Badge variant="reputation">⚡ {topPodium[2].reputationPoints} Rep</Badge>
+                <span className="text-xs text-text-subtle">{topPodium[2].topBadge}</span>
+              </Card>
+            </div>
+          )}
 
       {/* Rankings Full Table */}
       <Card variant="default" padding="none" className="overflow-hidden">
@@ -211,6 +193,8 @@ export const Leaderboard: React.FC = () => {
           </table>
         </div>
       </Card>
+        </>
+      )}
     </div>
   );
 };

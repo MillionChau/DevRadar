@@ -1,98 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
 import { EmptyState } from '../../components/common/EmptyState';
 import { AppIcon } from '../../components/common/Icon';
 import { NotificationItem } from '../../types';
-
-const MOCK_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: 'notif-1',
-    type: 'like',
-    title: 'New Like on your benchmark article',
-    message: 'Sarah Jenkins liked "Deep Dive into .NET 9 Native AOT Performance".',
-    isRead: false,
-    read: false,
-    createdAt: '10 minutes ago',
-    targetUrl: '/posts/post-2',
-    sender: {
-      id: 'u-102',
-      username: 'sarah_j',
-      avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=faces'
-    }
-  },
-  {
-    id: 'notif-2',
-    type: 'comment',
-    title: 'New discussion reply',
-    message: 'Alex Turner commented: "Have you tested cold-start latencies with 512MB RAM constraints?"',
-    isRead: false,
-    read: false,
-    createdAt: '45 minutes ago',
-    targetUrl: '/posts/post-2',
-    sender: {
-      id: 'u-101',
-      username: 'alex_turner',
-      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces'
-    }
-  },
-  {
-    id: 'notif-3',
-    type: 'system',
-    title: 'AI Quality Score Milestone',
-    message: 'Your article scored 98/100 on the automated Radar Quality & Integrity Index! +50 Reputation awarded.',
-    isRead: true,
-    read: true,
-    createdAt: '2 hours ago',
-    targetUrl: '/posts/post-2'
-  },
-  {
-    id: 'notif-4',
-    type: 'mention',
-    title: 'Mentioned in a discussion',
-    message: 'Marcus Kowalski mentioned you in "Migrating 45 Microservices to Kubernetes eBPF Cilium Mesh".',
-    isRead: true,
-    read: true,
-    createdAt: '1 day ago',
-    targetUrl: '/posts/post-4',
-    sender: {
-      id: 'u-104',
-      username: 'marcus_k',
-      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=faces'
-    }
-  },
-  {
-    id: 'notif-5',
-    type: 'report_resolved',
-    title: 'Content Moderation Resolution',
-    message: 'Your report regarding spam comment #8491 was reviewed and accepted by a moderator.',
-    isRead: true,
-    read: true,
-    createdAt: '3 days ago',
-    targetUrl: '/posts/post-1'
-  }
-];
+import { notificationApi } from '../../api';
 
 export const Notifications: React.FC = () => {
-  const [notifications, setNotifications] = useState<NotificationItem[]>(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [filter, setFilter] = useState<'all' | 'unread' | 'mentions' | 'system'>('all');
+
+  const fetchNotifications = async () => {
+    setIsLoading(true);
+    try {
+      const res = await notificationApi.getMyNotifications(1, 50);
+      setNotifications(res.items || []);
+    } catch (err) {
+      console.warn('Could not fetch notifications from backend:', err);
+      setNotifications([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
 
   const unreadCount = notifications.filter(n => !n.isRead && !n.read).length;
 
-  const handleMarkAllRead = () => {
+  const handleMarkAllRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true, read: true })));
+    try {
+      await notificationApi.markAllAsRead();
+    } catch (err) {
+      console.warn('Error marking all notifications as read:', err);
+    }
   };
 
-  const handleToggleRead = (id: string) => {
+  const handleToggleRead = async (id: string) => {
+    const targetNotif = notifications.find(n => n.id === id);
+    const wasRead = targetNotif ? (targetNotif.isRead || targetNotif.read) : false;
+
     setNotifications(prev =>
       prev.map(n => {
         if (n.id === id) {
-          const nextVal = !(n.isRead || n.read);
+          const nextVal = !wasRead;
           return { ...n, isRead: nextVal, read: nextVal };
         }
         return n;
       })
     );
+
+    if (!wasRead) {
+      try {
+        await notificationApi.markAsRead(id);
+      } catch (err) {
+        console.warn('Error marking notification as read:', err);
+      }
+    }
   };
 
   const filtered = notifications.filter(n => {
@@ -200,14 +167,19 @@ export const Notifications: React.FC = () => {
       </div>
 
       {/* Notification list */}
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center p-12 text-center bg-surface-card border border-surface-border rounded-xl">
+          <div className="w-8 h-8 border-2 border-brand-primary border-t-transparent rounded-full animate-spin mb-3" />
+          <p className="text-sm text-text-muted">Đang tải thông báo từ máy chủ...</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <EmptyState
           icon="BellOff"
-          title="No notifications here"
+          title="Không có thông báo nào"
           description={
             filter === 'unread'
-              ? "You're all caught up! No unread notifications right now."
-              : 'No notifications found for this filter.'
+              ? "Bạn đã đọc hết mọi thông báo! Không còn thông báo mới."
+              : 'Không có thông báo nào phù hợp với bộ lọc này.'
           }
         />
       ) : (

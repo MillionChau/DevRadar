@@ -6,61 +6,12 @@ import { Modal } from '../../components/common/Modal';
 import { AppIcon } from '../../components/common/Icon';
 import { TechZone } from '../../types';
 
-const INITIAL_TECH_ZONES: TechZone[] = [
-  {
-    id: 'tz-rust',
-    name: 'Rust Ecosystem',
-    slug: 'rust',
-    description: 'High-performance systems programming, memory safety, async runtimes, and WebAssembly.',
-    icon: 'Cpu',
-    color: '#f97316',
-    postCount: 1420,
-    followerCount: 8900
-  },
-  {
-    id: 'tz-dotnet',
-    name: '.NET & C#',
-    slug: 'dotnet',
-    description: 'Enterprise backend, high-throughput web APIs, ASP.NET Core, Native AOT, and cloud-native services.',
-    icon: 'Layers',
-    color: '#8b5cf6',
-    postCount: 980,
-    followerCount: 6400
-  },
-  {
-    id: 'tz-k8s',
-    name: 'DevOps & Cloud Native',
-    slug: 'devops',
-    description: 'Kubernetes, eBPF, service meshes, Terraform, GitOps, and platform engineering.',
-    icon: 'Terminal',
-    color: '#0ea5e9',
-    postCount: 2310,
-    followerCount: 12500
-  },
-  {
-    id: 'tz-ai',
-    name: 'AI & Machine Learning',
-    slug: 'ai-ml',
-    description: 'LLM agents, vector embeddings, CUDA acceleration, PyTorch, and on-prem inference engines.',
-    icon: 'Sparkles',
-    color: '#ec4899',
-    postCount: 3100,
-    followerCount: 18200
-  },
-  {
-    id: 'tz-database',
-    name: 'Databases & Distributed Systems',
-    slug: 'databases',
-    description: 'PostgreSQL internals, distributed consensus, Raft, CockroachDB, and Redis clusters.',
-    icon: 'Database',
-    color: '#10b981',
-    postCount: 1640,
-    followerCount: 9200
-  }
-];
+import { communityApi, adminApi } from '../../api';
+import { recordActivity } from '../../utils/activityLogger';
 
 export const AdminTechZones: React.FC = () => {
-  const [zones, setZones] = useState<TechZone[]>(INITIAL_TECH_ZONES);
+  const [zones, setZones] = useState<TechZone[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingZone, setEditingZone] = useState<TechZone | null>(null);
 
@@ -70,6 +21,27 @@ export const AdminTechZones: React.FC = () => {
   const [formDescription, setFormDescription] = useState('');
   const [formColor, setFormColor] = useState('#2563eb');
   const [formIcon, setFormIcon] = useState('Code2');
+
+  const fetchTechZones = () => {
+    setIsLoading(true);
+    communityApi
+      .getTechZones()
+      .then((items) => {
+        if (Array.isArray(items)) {
+          setZones(items);
+        }
+      })
+      .catch((err) => {
+        console.error('Could not load live techzones:', err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  };
+
+  React.useEffect(() => {
+    fetchTechZones();
+  }, []);
 
   const openCreateModal = () => {
     setEditingZone(null);
@@ -91,7 +63,7 @@ export const AdminTechZones: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim() || !formSlug.trim()) return;
 
@@ -110,25 +82,70 @@ export const AdminTechZones: React.FC = () => {
             : z
         )
       );
+
+      try {
+        await adminApi.updateTechZone(editingZone.id, {
+          name: formName,
+          slug: formSlug,
+          description: formDescription,
+          colorCode: formColor,
+        });
+        recordActivity({
+          action: 'UPDATE_TECHZONE',
+          action_label: `Cập nhật thông tin danh mục TechZone: ${formName}`,
+          category: 'CONTENT',
+          target_type: 'TECHZONE',
+          target_name: formName,
+          target_id: editingZone.id,
+          status: 'SUCCESS'
+        });
+        fetchTechZones();
+      } catch (err) {
+        console.warn('Could not update techzone on server:', err);
+      }
     } else {
-      const newZone: TechZone = {
-        id: `tz-${Date.now()}`,
-        name: formName,
-        slug: formSlug,
-        description: formDescription,
-        color: formColor,
-        icon: formIcon,
-        postCount: 0,
-        followerCount: 0
-      };
-      setZones(prev => [newZone, ...prev]);
+      try {
+        await adminApi.createTechZone({
+          name: formName,
+          slug: formSlug,
+          description: formDescription,
+          colorCode: formColor,
+        });
+        recordActivity({
+          action: 'CREATE_TECHZONE',
+          action_label: `Tạo mới chuyên mục công nghệ TechZone: ${formName}`,
+          category: 'CONTENT',
+          target_type: 'TECHZONE',
+          target_name: formName,
+          status: 'SUCCESS'
+        });
+        fetchTechZones();
+      } catch (err) {
+        console.warn('Could not create techzone on server:', err);
+      }
     }
     setIsModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this TechZone?')) {
+  const handleDelete = async (id: string) => {
+    const targetZone = zones.find(z => z.id === id);
+    if (confirm('Bạn có chắc chắn muốn xóa danh mục TechZone này?')) {
       setZones(prev => prev.filter(z => z.id !== id));
+      try {
+        await adminApi.deleteTechZone(id);
+        recordActivity({
+          action: 'DELETE_TECHZONE',
+          action_label: `Xóa danh mục TechZone: ${targetZone?.name || id}`,
+          category: 'CONTENT',
+          target_type: 'TECHZONE',
+          target_name: targetZone?.name || id,
+          target_id: id,
+          status: 'SUCCESS'
+        });
+        fetchTechZones();
+      } catch (err) {
+        console.warn('Could not delete techzone on server:', err);
+      }
     }
   };
 
@@ -151,8 +168,20 @@ export const AdminTechZones: React.FC = () => {
       </div>
 
       {/* Grid of zones */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {zones.map(tz => (
+      {isLoading ? (
+        <div className="py-16 flex flex-col items-center justify-center gap-3">
+          <div className="w-8 h-8 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs text-text-muted">Đang tải danh sách TechZone từ cơ sở dữ liệu Community...</span>
+        </div>
+      ) : zones.length === 0 ? (
+        <div className="py-16 flex flex-col items-center justify-center gap-2 border border-dashed border-surface-border rounded-xl">
+          <AppIcon name="Grid" size={32} className="text-text-subtle" />
+          <span className="text-sm font-semibold text-text-main">Chưa có TechZone nào</span>
+          <span className="text-xs text-text-muted">Nhấn nút "Create TechZone" để tạo chuyên mục công nghệ đầu tiên.</span>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {zones.map(tz => (
           <Card key={tz.id} variant="surface" className="flex flex-col justify-between">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -204,6 +233,7 @@ export const AdminTechZones: React.FC = () => {
           </Card>
         ))}
       </div>
+      )}
 
       {/* Create / Edit Modal */}
       <Modal

@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { AppIcon, IconName } from '../common/Icon';
 import Badge from '../common/Badge';
 import { useAuth } from '../../context/AuthContext';
+import { communityApi } from '../../api';
 
 interface SidebarItem {
   label: string;
@@ -14,6 +15,30 @@ interface SidebarItem {
 
 export const Sidebar: React.FC = () => {
   const { role } = useAuth();
+  const [techZones, setTechZones] = useState<{ name: string; path: string }[]>([
+    { name: '#dotnet', path: '/techzones/dotnet' },
+    { name: '#python-ai', path: '/techzones/python-ai' },
+    { name: '#typescript-react', path: '/techzones/typescript-react' },
+    { name: '#golang', path: '/techzones/golang' },
+    { name: '#devops', path: '/techzones/devops' },
+    { name: '#rust', path: '/techzones/rust' },
+  ]);
+
+  useEffect(() => {
+    communityApi
+      .getTechZones()
+      .then((zones) => {
+        if (Array.isArray(zones) && zones.length > 0) {
+          setTechZones(
+            zones.map((z: any) => ({
+              name: `#${z.slug || z.name.toLowerCase().replace(/\s+/g, '-')}`,
+              path: `/techzones/${z.slug || z.id}`,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const exploreItems: SidebarItem[] = [
     { label: 'Tất cả bài viết', path: '/', icon: 'home' },
@@ -25,14 +50,6 @@ export const Sidebar: React.FC = () => {
     { label: 'Bài viết của tôi', path: '/profile/me', icon: 'fileText', requireAuth: true },
     { label: 'Đã lưu (Bookmarks)', path: '/bookmarks', icon: 'bookmark', requireAuth: true },
     { label: 'GitHub Analytics', path: '/analytics/repo-health', icon: 'radar' },
-  ];
-
-  const techZones = [
-    { name: '#dotnet', path: '/techzones/dotnet' },
-    { name: '#react', path: '/techzones/react' },
-    { name: '#microservices', path: '/techzones/microservices' },
-    { name: '#devops', path: '/techzones/devops' },
-    { name: '#ai-quality', path: '/techzones/ai-quality' },
   ];
 
   const navClass = ({ isActive }: { isActive: boolean }) =>

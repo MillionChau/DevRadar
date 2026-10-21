@@ -44,6 +44,26 @@
     {
       "key": "relabeledContentId",
       "value": ""
+    },
+    {
+      "key": "techZoneId",
+      "value": ""
+    },
+    {
+      "key": "folderId",
+      "value": ""
+    },
+    {
+      "key": "draftPostId",
+      "value": ""
+    },
+    {
+      "key": "commentReportId",
+      "value": ""
+    },
+    {
+      "key": "targetUserId",
+      "value": ""
     }
   ],
   "auth": {
@@ -210,9 +230,13 @@
                   "const payload = body.data || body;",
                   "pm.test('Có accessToken', () => pm.expect(!!payload.accessToken).to.be.true);",
                   "if (payload.accessToken) pm.collectionVariables.set('accessToken', payload.accessToken);",
+                  "if (pm.environment) pm.environment.set('accessToken', payload.accessToken);",
                   "if (payload.refreshToken) pm.collectionVariables.set('refreshToken', payload.refreshToken);",
+                  "if (pm.environment) pm.environment.set('refreshToken', payload.refreshToken);",
                   "if (payload.userId) pm.collectionVariables.set('userId', payload.userId);",
-                  "if (payload.user && payload.user.id) pm.collectionVariables.set('userId', payload.user.id);"
+                  "if (pm.environment) pm.environment.set('userId', payload.userId);",
+                  "if (payload.user && payload.user.id) pm.collectionVariables.set('userId', payload.user.id);",
+                  "if (pm.environment) pm.environment.set('userId', payload.user.id);"
                 ]
               }
             }
@@ -481,7 +505,8 @@
                   "pm.test('Tạo bài 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
                   "const body = pm.response.json();",
                   "pm.test('Trả về postId', () => pm.expect(!!body.data).to.be.true);",
-                  "if (body.data) pm.collectionVariables.set('postId', body.data);"
+                  "if (body.data) pm.collectionVariables.set('postId', body.data);",
+                  "if (pm.environment) pm.environment.set('postId', body.data);"
                 ]
               }
             }
@@ -679,6 +704,204 @@
               }
             }
           ]
+        },
+        {
+          "name": "Lưu bản nháp bài viết (UC-18)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Posts"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Bản nháp bài viết về Clean Architecture trong .NET 10\",\n  \"isDraft\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lưu nháp 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const body = pm.response.json();",
+                  "pm.test('Trả về postId', () => pm.expect(!!body.data).to.be.true);",
+                  "if (body.data) pm.collectionVariables.set('draftPostId', body.data);",
+                  "if (pm.environment) pm.environment.set('draftPostId', body.data);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Danh sách bài nháp của tôi (UC-18)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Posts/drafts?page=1&pageSize=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Posts",
+                "drafts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON response', () => pm.response.to.be.json);",
+                  "const body = pm.response.json();",
+                  "pm.test('Có danh sách items', () => pm.expect(Array.isArray(body.data.items)).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lọc bài viết theo TechZone & Tag (UC-13)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Posts?techZoneSlug=dotnet&tag=csharp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Posts"
+              ],
+              "query": [
+                {
+                  "key": "techZoneSlug",
+                  "value": "dotnet"
+                },
+                {
+                  "key": "tag",
+                  "value": "csharp"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON response', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lưu bài viết vào Folder bookmark (UC-20, UC-21)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Posts/{{postId}}/bookmark?folderId={{folderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Posts",
+                "{{postId}}",
+                "bookmark"
+              ],
+              "query": [
+                {
+                  "key": "folderId",
+                  "value": "{{folderId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Toggle bookmark folder 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lấy danh sách bài đã lưu theo Folder (UC-21)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Posts/bookmarks/me?folderId={{folderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Posts",
+                "bookmarks",
+                "me"
+              ],
+              "query": [
+                {
+                  "key": "folderId",
+                  "value": "{{folderId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -719,7 +942,8 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
-                  "if (body.data && body.data.id) pm.collectionVariables.set('commentId', body.data.id);"
+                  "if (body.data && body.data.id) pm.collectionVariables.set('commentId', body.data.id);",
+                  "if (pm.environment) pm.environment.set('commentId', body.data.id);"
                 ]
               }
             }
@@ -784,6 +1008,224 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trả lời bình luận (Reply comment con) (UC-25)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Comment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Comment"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"postId\": \"{{postId}}\",\n  \"content\": \"Phản hồi thảo luận con lồng nhau\",\n  \"parentCommentId\": \"{{commentId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Có ParentCommentId\", () => pm.expect(body.data.parentCommentId).to.eql(pm.collectionVariables.get(\"commentId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Chỉnh sửa bình luận (UC-26)",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Comment/{{commentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Comment",
+                "{{commentId}}"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Nội dung bình luận đã được chỉnh sửa qua API\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Báo cáo bình luận vi phạm (UC-29)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Comment/{{commentId}}/report",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Comment",
+                "{{commentId}}",
+                "report"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Bình luận spam và ngôn từ kích động\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Báo cáo comment 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data.id) pm.collectionVariables.set(\"commentReportId\", body.data.id);",
+                  "if (pm.environment) pm.environment.set('commentReportId', body.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bình luận Non-IT an toàn (UC-25/AI)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Comment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Comment"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"postId\": \"{{postId}}\",\n  \"content\": \"Bài viết chia sẻ rất có tâm, cảm ơn tác giả nhé!\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Comment Non-IT được duyệt Published', () => {",
+                  "    pm.expect(body.data.status).to.eql(1);",
+                  "    pm.expect(body.data.isApproved).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bình luận Toxic bị ẩn kiểm duyệt (UC-29/AI)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Comment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Comment"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"postId\": \"{{postId}}\",\n  \"content\": \"Mày ngu như chó, biến đi đồ rác rưởi!\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Comment Toxic bị ẩn (Hidden/Unapproved)', () => {",
+                  "    pm.expect(body.data.status).to.eql(0);",
+                  "    pm.expect(body.data.isApproved).to.eql(0);",
+                  "});"
                 ]
               }
             }
@@ -857,7 +1299,8 @@
                 "exec": [
                   "pm.test('Report 200/400 (mới hoặc trùng)', () => pm.expect(pm.response.code).to.be.oneOf([200, 400]));",
                   "const body = pm.response.json();",
-                  "if (body.data && body.data.id) pm.collectionVariables.set('reportId', body.data.id);"
+                  "if (body.data && body.data.id) pm.collectionVariables.set('reportId', body.data.id);",
+                  "if (pm.environment) pm.environment.set('reportId', body.data.id);"
                 ]
               }
             }
@@ -937,6 +1380,94 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Review 200/403/400 (role hoặc report trống)', () => pm.expect(pm.response.code).to.be.oneOf([200, 400, 403]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin: Hàng chờ duyệt báo cáo bình luận (UC-29, UC-62)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/PostReports/comments/pending?pageIndex=1&pageSize=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "PostReports",
+                "comments",
+                "pending"
+              ],
+              "query": [
+                {
+                  "key": "pageIndex",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Có danh sách items\", () => pm.expect(Array.isArray(body.data.items)).to.be.true);",
+                  "if (body.data && body.data.items && body.data.items.length > 0) {",
+                  "    const repId = body.data.items[0].id;",
+                  "    pm.collectionVariables.set(\"commentReportId\", repId);",
+                  "    if (pm.environment) pm.environment.set(\"commentReportId\", repId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin: Duyệt báo cáo bình luận (ẩn comment) (UC-29, UC-63)",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/PostReports/comments/{{commentReportId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "PostReports",
+                "comments",
+                "{{commentReportId}}",
+                "review"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approve\": true,\n  \"reviewNote\": \"Xác nhận vi phạm, đã ẩn bình luận.\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
                 ]
               }
             }
@@ -1330,6 +1861,276 @@
               }
             }
           ]
+        },
+        {
+          "name": "AI Status & API Health (UC-44/45/46)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quality/api/v1/ai/ai-status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quality",
+                "api",
+                "v1",
+                "ai",
+                "ai-status"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Có thông tin AI Model', () => {",
+                  "    pm.expect(body.data).to.have.property('ai_model');",
+                  "    pm.expect(body.data).to.have.property('external_ai_enabled');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI Chat Assistant (UC-44)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quality/api/v1/ai/chat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quality",
+                "api",
+                "v1",
+                "ai",
+                "chat"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prompt\": \"Tôi muốn học FastAPI và C# .NET thì nên bắt đầu từ đâu?\",\n  \"history\": []\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('AI phản hồi câu trả lời', () => {",
+                  "    pm.expect(body.data).to.have.property('reply');",
+                  "    pm.expect(body.data.reply.length).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI Giải thích Dashboard & Metrics (UC-45)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quality/api/v1/ai/explain-dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quality",
+                "api",
+                "v1",
+                "ai",
+                "explain-dashboard"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chart_name\": \"top_languages\",\n  \"metrics\": {\n    \"Python\": 45,\n    \"C#\": 30,\n    \"TypeScript\": 25\n  },\n  \"context\": \"Phân tích xu hướng ngôn ngữ công nghệ tháng 10/2026\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('AI phân tích giải thích biểu đồ', () => {",
+                  "    pm.expect(body.data).to.have.property('explanation');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI Tóm tắt bài viết chuyên sâu (UC-46)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quality/api/v1/ai/summarize",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quality",
+                "api",
+                "v1",
+                "ai",
+                "summarize"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Microservices là một mô hình kiến trúc phần mềm phân tán, trong đó ứng dụng được cấu thành từ nhiều dịch vụ nhỏ độc lập giao tiếp qua REST API hoặc Message Broker. Mỗi dịch vụ có cơ sở dữ liệu riêng biệt giúp dễ bảo trì và mở rộng.\",\n  \"max_length\": 150\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('AI sinh tóm tắt thành công', () => {",
+                  "    pm.expect(body.data).to.have.property('summary');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Kiểm duyệt Comment Non-IT an toàn (Chấp nhận)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quality/api/v1/quality/analyze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quality",
+                "api",
+                "v1",
+                "quality",
+                "analyze"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Cảm ơn tác giả nhiều nhé, bài viết rất bổ ích!\",\n  \"content_type\": \"comment\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Bình luận Non-IT hợp lệ (is_valid = true)', () => {",
+                  "    pm.expect(body.is_valid).to.be.true;",
+                  "    pm.expect(body.toxicity.label).to.eql('safe');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Kiểm duyệt Comment Toxic (Từ chối)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quality/api/v1/quality/analyze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quality",
+                "api",
+                "v1",
+                "quality",
+                "analyze"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Mày ngu như bò, biến đi đồ rác rưởi!\",\n  \"content_type\": \"comment\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Bình luận Toxic bị từ chối (is_valid = false)', () => {",
+                  "    pm.expect(body.is_valid).to.be.false;",
+                  "    pm.expect(['toxic', 'suspicious']).to.include(body.toxicity.label);",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -1541,6 +2342,69 @@
               }
             }
           ]
+        },
+        {
+          "name": "UC-79 Dừng phiên cào dữ liệu GitHub (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/crawler/api/v1/crawl/stop",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "crawler",
+                "api",
+                "v1",
+                "crawl",
+                "stop"
+              ]
+            },
+            "description": "UC-79: Gửi tín hiệu Graceful Cancellation để dừng tiến trình cào GitHub.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": null\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "UC-81 Thống kê kho dữ liệu toàn hệ thống (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/crawler/analytics/system-overview",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "crawler",
+                "analytics",
+                "system-overview"
+              ]
+            },
+            "description": "UC-81: Thống kê tổng số repo, ngôn ngữ, sức khỏe, 7 ngày gần nhất và token pool."
+          },
+          "response": []
         }
       ]
     },
@@ -1716,7 +2580,9 @@
                   "const user = body.data || body;",
                   "pm.test('Có id người dùng', () => pm.expect(!!(user.id || user.userId)).to.be.true);",
                   "if (user.id) pm.collectionVariables.set('detailUserId', user.id);",
-                  "else if (user.userId) pm.collectionVariables.set('detailUserId', user.userId);"
+                  "if (pm.environment) pm.environment.set('detailUserId', user.id);",
+                  "else if (user.userId) pm.collectionVariables.set('detailUserId', user.userId);",
+                  "if (pm.environment) pm.environment.set('detailUserId', user.userId);"
                 ]
               }
             }
@@ -1849,7 +2715,8 @@
                   "pm.test('Relabel 200 (đã lưu nhãn)', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
                   "pm.test('Có content_id phản hồi', () => pm.expect(!!body.content_id).to.be.true);",
-                  "if (body.content_id) pm.collectionVariables.set('relabeledContentId', body.content_id);"
+                  "if (body.content_id) pm.collectionVariables.set('relabeledContentId', body.content_id);",
+                  "if (pm.environment) pm.environment.set('relabeledContentId', body.content_id);"
                 ]
               }
             }
@@ -1859,11 +2726,23 @@
           "name": "Truy vấn kết quả đã relabel (results?limit)",
           "request": {
             "method": "GET",
-            "url": {              "raw": "{{baseUrl}}/quality/api/v1/quality/results?limit=50",
-              "host": ["{{baseUrl}}"],
-              "path": ["quality", "api", "v1", "quality", "results"],
+            "url": {
+              "raw": "{{baseUrl}}/quality/api/v1/quality/results?limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quality",
+                "api",
+                "v1",
+                "quality",
+                "results"
+              ],
               "query": [
-                { "key": "limit", "value": "50" }
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
               ]
             }
           },
@@ -1882,6 +2761,281 @@
                   "pm.test('Tìm thấy bản ghi vừa relabel trong MongoDB', () => {",
                   "    const rid = pm.collectionVariables.get('relabeledContentId');",
                   "    if (rid) pm.expect(body.results.some(r => r.content_id === rid)).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI Status & API Health (UC-44/45/46)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quality/api/v1/ai/ai-status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quality",
+                "api",
+                "v1",
+                "ai",
+                "ai-status"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const d = body.data || body;",
+                  "pm.test('Có thông tin AI Model', () => {",
+                  "    pm.expect(d).to.have.property('ai_model');",
+                  "    pm.expect(d).to.have.property('external_ai_enabled');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI Chat Assistant (UC-44)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quality/api/v1/ai/chat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quality",
+                "api",
+                "v1",
+                "ai",
+                "chat"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Tôi muốn học FastAPI và C# .NET thì nên bắt đầu từ đâu?\",\n  \"history\": []\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const d = body.data || body;",
+                  "pm.test('AI phản hồi câu trả lời', () => {",
+                  "    pm.expect(d).to.have.property('answer');",
+                  "    pm.expect(d.answer.length).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI Giải thích Dashboard & Metrics (UC-45)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quality/api/v1/ai/explain-dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quality",
+                "api",
+                "v1",
+                "ai",
+                "explain-dashboard"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chart_type\": \"top_languages\",\n  \"metrics\": {\n    \"Python\": 45,\n    \"C#\": 30,\n    \"TypeScript\": 25\n  },\n  \"context\": {\n    \"topic\": \"Phân tích xu hướng ngôn ngữ công nghệ tháng 10/2026\"\n  }\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const d = body.data || body;",
+                  "pm.test('AI phân tích giải thích biểu đồ', () => {",
+                  "    pm.expect(d).to.have.property('summary');",
+                  "    pm.expect(d).to.have.property('strengths');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI Tóm tắt bài viết chuyên sâu (UC-46)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quality/api/v1/ai/summarize",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quality",
+                "api",
+                "v1",
+                "ai",
+                "summarize"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Microservices là một mô hình kiến trúc phần mềm phân tán, trong đó ứng dụng được cấu thành từ nhiều dịch vụ nhỏ độc lập giao tiếp qua REST API hoặc Message Broker. Mỗi dịch vụ có cơ sở dữ liệu riêng biệt giúp dễ bảo trì và mở rộng.\",\n  \"max_length\": 150\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const d = body.data || body;",
+                  "pm.test('AI sinh tóm tắt thành công', () => {",
+                  "    pm.expect(d).to.have.property('summary');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Kiểm duyệt Comment Non-IT an toàn (Chấp nhận)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quality/api/v1/quality/analyze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quality",
+                "api",
+                "v1",
+                "quality",
+                "analyze"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Cảm ơn tác giả nhiều nhé, bài viết rất bổ ích!\",\n  \"content_type\": \"comment\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Bình luận Non-IT hợp lệ (is_valid = true)', () => {",
+                  "    pm.expect(body.is_valid).to.be.true;",
+                  "    pm.expect(body.toxicity.label).to.eql('safe');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Kiểm duyệt Comment Toxic (Từ chối)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/quality/api/v1/quality/analyze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "quality",
+                "api",
+                "v1",
+                "quality",
+                "analyze"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Mày ngu như bò, biến đi đồ rác rưởi!\",\n  \"content_type\": \"comment\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Bình luận Toxic bị từ chối (is_valid = false)', () => {",
+                  "    pm.expect(body.is_valid).to.be.false;",
+                  "    pm.expect(['toxic', 'suspicious']).to.include(body.toxicity.label);",
                   "});"
                 ]
               }
@@ -2083,7 +3237,8 @@
                   "const body = pm.response.json();",
                   "const payload = body.data || body;",
                   "pm.test('Có accessToken B', () => pm.expect(!!payload.accessToken).to.be.true);",
-                  "if (payload.accessToken) pm.collectionVariables.set('accessTokenB', payload.accessToken);"
+                  "if (payload.accessToken) pm.collectionVariables.set('accessTokenB', payload.accessToken);",
+                  "if (pm.environment) pm.environment.set('accessTokenB', payload.accessToken);"
                 ]
               }
             }
@@ -2217,11 +3372,1369 @@
                   "    const list = Array.isArray(items) ? items : [];",
                   "    pm.expect(list.length).to.be.at.least(1);",
                   "    if (list.length > 0) pm.collectionVariables.set('notificationId', list[0].id);",
+                  "if (pm.environment) pm.environment.set('notificationId', list[0].id);",
                   "});"
                 ]
               }
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "14. Community — TechZones (UC-14 & Admin UC-69-74)",
+      "item": [
+        {
+          "name": "Khám phá danh sách TechZone active (UC-14)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/TechZones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "TechZones"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON response', () => pm.response.to.be.json);",
+                  "const body = pm.response.json();",
+                  "pm.test('Có danh sách zones', () => pm.expect(Array.isArray(body.data)).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Chi tiết TechZone theo Slug (UC-14)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/TechZones/dotnet",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "TechZones",
+                "dotnet"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 hoặc 404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin - Xem danh sách TechZone (UC-69)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/admin/TechZones?page=1&pageSize=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "admin",
+                "TechZones"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 hoặc 403', () => pm.expect(pm.response.code).to.be.oneOf([200, 403]));",
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data.items && body.data.items.length > 0) {",
+                  "    const zoneId = body.data.items[0].id;",
+                  "    pm.collectionVariables.set('techZoneId', zoneId);",
+                  "    if (pm.environment) pm.environment.set('techZoneId', zoneId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin - Tạo mới TechZone (UC-70)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/admin/TechZones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "admin",
+                "TechZones"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \".NET Core & C# {{$timestamp}}\",\n  \"slug\": \"dotnet-{{$timestamp}}\",\n  \"description\": \"Hệ sinh thái .NET hiện đại\",\n  \"colorCode\": \"#512BD4\",\n  \"tags\": \"dotnet,csharp,aspnet,efcore\",\n  \"displayOrder\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Tạo TechZone 200/400/403', () => pm.expect(pm.response.code).to.be.oneOf([200, 400, 403]));",
+                  "const body = pm.response.json();",
+                  "const zId = (body.data && body.data.id) ? body.data.id : body.data;",
+                  "if (zId) {",
+                  "    pm.collectionVariables.set('techZoneId', zId);",
+                  "    if (pm.environment) pm.environment.set('techZoneId', zId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin - Cập nhật TechZone (UC-71)",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/admin/TechZones/{{techZoneId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "admin",
+                "TechZones",
+                "{{techZoneId}}"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \".NET Core & C# (Updated)\",\n  \"description\": \"Cập nhật hệ sinh thái .NET\",\n  \"colorCode\": \"#512BD4\",\n  \"displayOrder\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Cập nhật 200/403/404', () => pm.expect(pm.response.code).to.be.oneOf([200, 403, 404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin - Bật/Tắt trạng thái TechZone (UC-72)",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/admin/TechZones/{{techZoneId}}/toggle-status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "admin",
+                "TechZones",
+                "{{techZoneId}}",
+                "toggle-status"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Toggle status 200/403/404', () => pm.expect(pm.response.code).to.be.oneOf([200, 403, 404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin - Cập nhật Tags TechZone (UC-74)",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/admin/TechZones/{{techZoneId}}/tags",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "admin",
+                "TechZones",
+                "{{techZoneId}}",
+                "tags"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "\"dotnet,csharp,aspnet,efcore,blazor\""
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Update tags 200/403/404', () => pm.expect(pm.response.code).to.be.oneOf([200, 403, 404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin - Xóa TechZone (UC-73)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/admin/TechZones/{{techZoneId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "admin",
+                "TechZones",
+                "{{techZoneId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Xóa 200/400/403/404', () => pm.expect(pm.response.code).to.be.oneOf([200, 400, 403, 404]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "15. Community — Bookmark Folders (UC-21)",
+      "item": [
+        {
+          "name": "Danh sách thư mục lưu trữ của tôi (UC-21)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/bookmarks/folders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "bookmarks",
+                "folders"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JSON response', () => pm.response.to.be.json);",
+                  "const body = pm.response.json();",
+                  "pm.test('Có mảng data', () => pm.expect(Array.isArray(body.data)).to.be.true);",
+                  "if (body.data && body.data.length > 0) {",
+                  "    const fId = body.data[0].id;",
+                  "    pm.collectionVariables.set('folderId', fId);",
+                  "    if (pm.environment) pm.environment.set('folderId', fId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tạo mới thư mục lưu trữ (UC-21)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/bookmarks/folders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "bookmarks",
+                "folders"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Thư mục C# & .NET\",\n  \"description\": \"Lưu các bài viết kỹ thuật C#\",\n  \"colorCode\": \"#512BD4\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Tạo folder 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const body = pm.response.json();",
+                  "const fId = (body.data && body.data.id) ? body.data.id : body.data;",
+                  "if (fId) {",
+                  "    pm.collectionVariables.set('folderId', fId);",
+                  "    if (pm.environment) pm.environment.set('folderId', fId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cập nhật thư mục lưu trữ (UC-21)",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/bookmarks/folders/{{folderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "bookmarks",
+                "folders",
+                "{{folderId}}"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Thư mục C# Nâng cao\",\n  \"description\": \"Cập nhật mô tả thư mục\",\n  \"colorCode\": \"#2496ED\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Update folder 200/404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Xóa thư mục lưu trữ (UC-21)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/bookmarks/folders/{{folderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "bookmarks",
+                "folders",
+                "{{folderId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Xóa folder 200/404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "16. Community — Follows (UC-30)",
+      "item": [
+        {
+          "name": "Theo dõi / Bỏ theo dõi tác giả (Toggle Follow) (UC-30)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Follows/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Follows",
+                "{{userId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Toggle follow 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Có IsFollowing\", () => pm.expect(body.data.isFollowing !== undefined).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Xem tổng quan trạng thái theo dõi (Summary) (UC-30)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Follows/{{userId}}/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Follows",
+                "{{userId}}",
+                "summary"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Có followersCount\", () => pm.expect(body.data.followersCount !== undefined).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Danh sách người theo dõi tác giả (Followers) (UC-30)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Follows/{{userId}}/followers?pageIndex=1&pageSize=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Follows",
+                "{{userId}}",
+                "followers"
+              ],
+              "query": [
+                {
+                  "key": "pageIndex",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Danh sách tác giả đang theo dõi (Following) (UC-30)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/community/api/Follows/{{userId}}/following?pageIndex=1&pageSize=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "Follows",
+                "{{userId}}",
+                "following"
+              ],
+              "query": [
+                {
+                  "key": "pageIndex",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "17. Tech Reports (UC-35..38 & Admin UC-64..68)",
+      "item": [
+        {
+          "name": "UC-35 Danh sách báo cáo công nghệ đã xuất bản",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/crawler/api/v1/reports?page=1&limit=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "crawler",
+                "api",
+                "v1",
+                "reports"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "UC-35: Khách và User xem danh sách bài viết phân tích xu hướng đã xuất bản."
+          },
+          "response": []
+        },
+        {
+          "name": "UC-36 Xem chi tiết báo cáo công nghệ (tăng views)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/crawler/api/v1/reports/slug-or-id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "crawler",
+                "api",
+                "v1",
+                "reports",
+                "slug-or-id"
+              ]
+            },
+            "description": "UC-36: Xem chi tiết báo cáo và tự động tăng lượt xem views_count."
+          },
+          "response": []
+        },
+        {
+          "name": "UC-38 Thích / Bỏ thích báo cáo công nghệ",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/crawler/api/v1/reports/sample-id/like?increment=true",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "crawler",
+                "api",
+                "v1",
+                "reports",
+                "sample-id",
+                "like"
+              ],
+              "query": [
+                {
+                  "key": "increment",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "UC-38: Thả tim bài viết phân tích công nghệ."
+          },
+          "response": []
+        },
+        {
+          "name": "UC-64 Admin — Danh sách toàn bộ báo cáo (Draft, Published, Archived)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/crawler/api/v1/admin/reports?page=1&limit=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "crawler",
+                "api",
+                "v1",
+                "admin",
+                "reports"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "UC-64: Quản trị viên xem toàn bộ báo cáo phân loại theo trạng thái."
+          },
+          "response": []
+        },
+        {
+          "name": "UC-65 Admin — Xem chi tiết báo cáo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/crawler/api/v1/admin/reports/sample-id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "crawler",
+                "api",
+                "v1",
+                "admin",
+                "reports",
+                "sample-id"
+              ]
+            },
+            "description": "UC-65: Quản trị viên xem nội dung và metrics snapshot của báo cáo."
+          },
+          "response": []
+        },
+        {
+          "name": "UC-66 Admin — Tạo mới báo cáo công nghệ (Draft)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/crawler/api/v1/admin/reports",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "crawler",
+                "api",
+                "v1",
+                "admin",
+                "reports"
+              ]
+            },
+            "description": "UC-66: Quản trị viên tạo bản nháp bài phân tích công nghệ.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Báo cáo Xu hướng Microservices và Clean Architecture 2026\",\n  \"summary\": \"Tổng hợp các mẫu thiết kế và thực hành tốt nhất trong xây dựng hệ thống phân tán hiệu năng cao.\",\n  \"content_markdown\": \"# Báo cáo Xu hướng 2026\\n\\nNội dung phân tích kiến trúc...\",\n  \"category\": \"TREND\",\n  \"tags\": [\n    \"architecture\",\n    \"microservices\",\n    \"dotnet\",\n    \"fastapi\"\n  ],\n  \"status\": \"DRAFT\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "UC-66 Admin — Duyệt xuất bản báo cáo (Publish)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/crawler/api/v1/admin/reports/sample-id/publish",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "crawler",
+                "api",
+                "v1",
+                "admin",
+                "reports",
+                "sample-id",
+                "publish"
+              ]
+            },
+            "description": "UC-66: Duyệt xuất bản bài phân tích ra cộng đồng (PUBLISHED)."
+          },
+          "response": []
+        },
+        {
+          "name": "UC-67 Admin — Ẩn báo cáo (Archive)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/crawler/api/v1/admin/reports/sample-id/hide",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "crawler",
+                "api",
+                "v1",
+                "admin",
+                "reports",
+                "sample-id",
+                "hide"
+              ]
+            },
+            "description": "UC-67: Chuyển báo cáo sang trạng thái ARCHIVED để ẩn khỏi cộng đồng."
+          },
+          "response": []
+        },
+        {
+          "name": "UC-68 Admin — Xóa vĩnh viễn báo cáo",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/crawler/api/v1/admin/reports/sample-id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "crawler",
+                "api",
+                "v1",
+                "admin",
+                "reports",
+                "sample-id"
+              ]
+            },
+            "description": "UC-68: Xóa hoàn toàn báo cáo khỏi cơ sở dữ liệu."
+          },
+          "response": []
+        },
+        {
+          "name": "UC-66 Admin — Tự động tạo báo cáo công nghệ bằng AI (AI Generate)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topic\": \"Toàn cảnh hệ sinh thái Python và AI trong năm 2026\",\n  \"category\": \"LANGUAGE\",\n  \"target_tech\": \"Python\",\n  \"save_to_db\": true,\n  \"status\": \"DRAFT\",\n  \"include_live_metrics\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/crawler/api/v1/admin/reports/ai-generate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "crawler",
+                "api",
+                "v1",
+                "admin",
+                "reports",
+                "ai-generate"
+              ]
+            },
+            "description": "Sử dụng UnoRouter LLM (kết hợp Key Swap khi rate-limited) và số liệu crawl thực tế từ MongoDB để tự động sinh báo cáo kỹ thuật chuẩn Markdown."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin — Gợi ý chủ đề báo cáo công nghệ nổi bật (AI Suggestions)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/crawler/api/v1/admin/reports/ai-suggestions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "crawler",
+                "api",
+                "v1",
+                "admin",
+                "reports",
+                "ai-suggestions"
+              ]
+            },
+            "description": "Phân tích kho repositories để đề xuất các chủ đề báo cáo công nghệ nổi bật nhất."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin — Trạng thái kho khóa AI và xoay vòng (AI Status & Key Swap)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/crawler/api/v1/admin/ai/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "crawler",
+                "api",
+                "v1",
+                "admin",
+                "ai",
+                "status"
+              ]
+            },
+            "description": "Kiểm tra số lượng AI API Keys, trạng thái hoạt động và các key đang trong hàng chờ Cooldown."
+          },
+          "response": []
+        },
+        {
+          "name": "Kích hoạt lịch trình sinh báo cáo tự động (Trigger Auto Report Job)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/crawler/scheduler/trigger-report-now",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "crawler",
+                "scheduler",
+                "trigger-report-now"
+              ]
+            },
+            "description": "Kích hoạt tiến trình phân tích dữ liệu kho mã nguồn MongoDB Atlas và sinh bài báo cáo công nghệ tự động ngay lập tức trong background."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "18. Admin Content Management (UC-52..61)",
+      "item": [
+        {
+          "name": "UC-52 Admin — Xem danh sách toàn bộ bài viết",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/community/api/admin/posts?page=1&pageSize=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "admin",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "UC-52: Quản lý bài viết với bộ lọc Draft, Published, Hidden, Flagged."
+          },
+          "response": []
+        },
+        {
+          "name": "UC-53 Admin — Xem chi tiết bài viết",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/community/api/admin/posts/{{post_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "admin",
+                "posts",
+                "{{post_id}}"
+              ]
+            },
+            "description": "UC-53: Xem đầy đủ thông tin bài viết và kiểm duyệt."
+          },
+          "response": []
+        },
+        {
+          "name": "UC-54 Admin — Chủ động ẩn bài viết vi phạm",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/community/api/admin/posts/{{post_id}}/hide",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "admin",
+                "posts",
+                "{{post_id}}",
+                "hide"
+              ]
+            },
+            "description": "UC-54: Ẩn bài viết trực tiếp và thông báo cho tác giả.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Nội dung vi phạm tiêu chuẩn cộng đồng về ngôn từ.\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "UC-55 Admin — Khôi phục bài viết",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/community/api/admin/posts/{{post_id}}/restore",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "admin",
+                "posts",
+                "{{post_id}}",
+                "restore"
+              ]
+            },
+            "description": "UC-55: Khôi phục bài viết đã bị ẩn trở lại trạng thái Published."
+          },
+          "response": []
+        },
+        {
+          "name": "UC-56 Admin — Xóa bài viết vi phạm",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/community/api/admin/posts/{{post_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "admin",
+                "posts",
+                "{{post_id}}"
+              ]
+            },
+            "description": "UC-56: Xóa bài viết vi phạm."
+          },
+          "response": []
+        },
+        {
+          "name": "UC-57 Admin — Xem danh sách toàn bộ bình luận",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/community/api/admin/comments?page=1&pageSize=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "admin",
+                "comments"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "UC-57: Danh sách quản trị bình luận phân trang kèm bộ lọc kiểm duyệt."
+          },
+          "response": []
+        },
+        {
+          "name": "UC-58 Admin — Xem chi tiết bình luận",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/community/api/admin/comments/{{comment_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "admin",
+                "comments",
+                "{{comment_id}}"
+              ]
+            },
+            "description": "UC-58: Xem chi tiết nội dung và tác giả bình luận."
+          },
+          "response": []
+        },
+        {
+          "name": "UC-59 Admin — Chủ động ẩn bình luận vi phạm",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/community/api/admin/comments/{{comment_id}}/hide",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "admin",
+                "comments",
+                "{{comment_id}}",
+                "hide"
+              ]
+            },
+            "description": "UC-59: Ẩn bình luận trực tiếp.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Bình luận chứa ngôn từ độc hại.\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "UC-60 Admin — Khôi phục bình luận",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/community/api/admin/comments/{{comment_id}}/restore",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "admin",
+                "comments",
+                "{{comment_id}}",
+                "restore"
+              ]
+            },
+            "description": "UC-60: Khôi phục bình luận đã ẩn."
+          },
+          "response": []
+        },
+        {
+          "name": "UC-61 Admin — Xóa bình luận vi phạm",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/community/api/admin/comments/{{comment_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "community",
+                "api",
+                "admin",
+                "comments",
+                "{{comment_id}}"
+              ]
+            },
+            "description": "UC-61: Xóa vĩnh viễn bình luận."
+          },
+          "response": []
         }
       ]
     }

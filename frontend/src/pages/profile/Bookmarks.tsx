@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -6,67 +6,52 @@ import { TechTagBadge, ToxicityBadge } from '../../components/common/Badge';
 import { EmptyState } from '../../components/common/EmptyState';
 import { AppIcon } from '../../components/common/Icon';
 import { Post } from '../../types';
-
-const MOCK_BOOKMARKS: Post[] = [
-  {
-    id: 'post-1',
-    title: 'Benchmarking Rust vs Go for High-Throughput Realtime Ingestion Engines',
-    contentSnippet: 'In this benchmark, we put Actix-Web, Axum, Gin, and Fiber against an ingestion workload of 250k events/sec...',
-    author: {
-      id: 'u-101',
-      username: 'alex_turner',
-      fullName: 'Alex Turner',
-      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces',
-      reputationScore: 1420,
-      role: 'Member',
-      headline: 'Staff Systems Engineer @ CloudPulse'
-    },
-    techZone: { id: 'tz-rust', name: 'Rust Ecosystem', slug: 'rust', color: '#f97316' },
-    tags: ['rust', 'go', 'performance', 'systems'],
-    createdAt: '2026-03-24T09:15:00Z',
-    likeCount: 384,
-    commentCount: 42,
-    bookmarkCount: 95,
-    viewCount: 3120,
-    toxicityScore: 0.02,
-    qualityScore: 94
-  },
-  {
-    id: 'post-4',
-    title: 'Migrating 45 Microservices to Kubernetes eBPF Cilium Mesh: Complete Postmortem',
-    contentSnippet: 'Zero iptables overhead, sub-millisecond MTLS handshake, and dynamic L7 observability pipelines. Here is our journey...',
-    author: {
-      id: 'u-104',
-      username: 'marcus_k',
-      fullName: 'Marcus Kowalski',
-      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=faces',
-      reputationScore: 2180,
-      role: 'Member',
-      headline: 'Principal Cloud Architect'
-    },
-    techZone: { id: 'tz-k8s', name: 'DevOps & Cloud', slug: 'devops', color: '#0ea5e9' },
-    tags: ['kubernetes', 'ebpf', 'cilium', 'devops'],
-    createdAt: '2026-03-20T16:00:00Z',
-    likeCount: 512,
-    commentCount: 68,
-    bookmarkCount: 140,
-    viewCount: 4890,
-    toxicityScore: 0.01,
-    qualityScore: 96
-  }
-];
+import { communityApi } from '../../api';
 
 export const Bookmarks: React.FC = () => {
-  const [bookmarks, setBookmarks] = useState<Post[]>(MOCK_BOOKMARKS);
-  const [activeCategory, setActiveCategory] = useState<'all' | 'rust' | 'devops'>('all');
+  const [bookmarks, setBookmarks] = useState<Post[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [activeCategory, setActiveCategory] = useState<string>('all');
 
-  const handleRemoveBookmark = (postId: string) => {
-    setBookmarks(prev => prev.filter(p => p.id !== postId));
+  const fetchBookmarks = async () => {
+    setIsLoading(true);
+    try {
+      const res = await communityApi.getMyBookmarks();
+      setBookmarks(res.items || []);
+    } catch (err) {
+      console.warn('Could not load live bookmarks:', err);
+      setBookmarks([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchBookmarks();
+  }, []);
+
+  const handleRemoveBookmark = async (postId: string) => {
+    setBookmarks(prev => prev.filter(p => p.id !== postId));
+    try {
+      await communityApi.toggleBookmarkPost(postId);
+    } catch (err) {
+      console.warn('Error removing bookmark on server:', err);
+    }
+  };
+
+  // Trích xuất danh sách TechZone xuất hiện trong bookmarks
+  const categoryMap = new Map<string, string>();
+  bookmarks.forEach(p => {
+    const slug = p.techZone?.slug || 'other';
+    const name = p.techZone?.name || 'Khác';
+    if (!categoryMap.has(slug)) {
+      categoryMap.set(slug, name);
+    }
+  });
 
   const filtered = bookmarks.filter(p => {
     if (activeCategory === 'all') return true;
-    return p.techZone?.slug === activeCategory;
+    return (p.techZone?.slug || 'other') === activeCategory;
   });
 
   return (
@@ -76,14 +61,14 @@ export const Bookmarks: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-text-main flex items-center gap-2">
             <AppIcon name="BookmarkCheck" size={24} className="text-brand-secondary" />
-            Saved Posts & Bookmarks
+            Bài viết đã lưu
           </h1>
           <p className="text-sm text-text-muted mt-1">
-            Access your curated library of technical deep-dives, architectures, and benchmarks.
+            Thư viện lưu trữ các bài viết kỹ thuật, kiến trúc microservices và báo cáo hiệu năng chuyên sâu của bạn.
           </p>
         </div>
         <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-surface-elevated text-text-muted border border-surface-border self-start sm:self-auto">
-          {bookmarks.length} saved articles
+          {bookmarks.length} bài đã lưu
         </span>
       </div>
 
@@ -97,41 +82,42 @@ export const Bookmarks: React.FC = () => {
               : 'bg-surface-elevated text-text-muted hover:text-text-main hover:bg-surface-elevated/80'
           }`}
         >
-          All Categories ({bookmarks.length})
+          Tất cả ({bookmarks.length})
         </button>
-        <button
-          onClick={() => setActiveCategory('rust')}
-          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            activeCategory === 'rust'
-              ? 'bg-brand-primary text-white'
-              : 'bg-surface-elevated text-text-muted hover:text-text-main hover:bg-surface-elevated/80'
-          }`}
-        >
-          Rust Ecosystem
-        </button>
-        <button
-          onClick={() => setActiveCategory('devops')}
-          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            activeCategory === 'devops'
-              ? 'bg-brand-primary text-white'
-              : 'bg-surface-elevated text-text-muted hover:text-text-main hover:bg-surface-elevated/80'
-          }`}
-        >
-          DevOps & Cloud
-        </button>
+        {Array.from(categoryMap.entries()).map(([slug, name]) => {
+          const count = bookmarks.filter(p => (p.techZone?.slug || 'other') === slug).length;
+          return (
+            <button
+              key={slug}
+              onClick={() => setActiveCategory(slug)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                activeCategory === slug
+                  ? 'bg-brand-primary text-white'
+                  : 'bg-surface-elevated text-text-muted hover:text-text-main hover:bg-surface-elevated/80'
+              }`}
+            >
+              {name} ({count})
+            </button>
+          );
+        })}
       </div>
 
       {/* Bookmarked Items */}
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center p-12 text-center bg-surface-card border border-surface-border rounded-xl">
+          <div className="w-8 h-8 border-2 border-brand-primary border-t-transparent rounded-full animate-spin mb-3" />
+          <p className="text-sm text-text-muted">Đang tải danh sách bài viết đã lưu...</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <EmptyState
           icon="Bookmark"
-          title="No bookmarked posts found"
+          title="Chưa có bài viết nào được lưu"
           description={
             activeCategory === 'all'
-              ? "You haven't saved any articles yet. Explore the community newsfeed to find interesting technical reads."
-              : 'No saved articles match this category filter.'
+              ? 'Bạn chưa lưu bài viết nào. Hãy khám phá bảng tin cộng đồng để tìm kiếm và đánh dấu các tài liệu kỹ thuật hữu ích.'
+              : 'Không có bài viết đã lưu nào thuộc danh mục này.'
           }
-          actionLabel="Browse Newsfeed"
+          actionLabel="Khám phá bảng tin"
           onAction={() => {
             window.location.href = '/';
           }}

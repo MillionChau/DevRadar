@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import Input, { Textarea } from '../../components/common/Input';
 import { AppIcon } from '../../components/common/Icon';
+import { communityApi } from '../../api';
+import { TechZone } from '../../types';
 
 export const CreatePost: React.FC = () => {
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
-  const [techZone, setTechZone] = useState('dotnet');
+  const [techZone, setTechZone] = useState('');
+  const [techZoneList, setTechZoneList] = useState<TechZone[]>([]);
   const [tagsInput, setTagsInput] = useState('dotnet10, microservices');
   const [content, setContent] = useState(`## Giới thiệu giải pháp
 
@@ -28,15 +31,60 @@ public void ConfigureServices(IServiceCollection services)
 2. Kiểm duyệt tự động qua AI Toxicity.
 `);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [aiWarning, setAiWarning] = useState(false);
+  const [aiWarning, setAiWarning] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const handlePublish = (e: React.FormEvent) => {
+  useEffect(() => {
+    communityApi
+      .getTechZones()
+      .then((zones) => {
+        if (zones && zones.length > 0) {
+          setTechZoneList(zones);
+          setTechZone(zones[0].id);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not load dynamic techzones, fallbacking:', err);
+      });
+  }, []);
+
+  const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!title.trim()) {
+      setErrorMessage('Vui lòng nhập tiêu đề bài viết');
+      return;
+    }
+    if (!content.trim()) {
+      setErrorMessage('Vui lòng nhập nội dung bài viết');
+      return;
+    }
+
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    setErrorMessage('');
+    setAiWarning(null);
+
+    const fullContent = `# ${title.trim()}\n\n${content.trim()}`;
+
+    try {
+      await communityApi.createPost({
+        content: fullContent,
+        techZoneId: techZone || undefined,
+        tags: tagsInput,
+      });
+
       navigate('/');
-    }, 600);
+    } catch (err: any) {
+      console.warn('Create post error from API Gateway / QualityService:', err);
+      const msg = err?.message || err?.data?.message || 'Có lỗi xảy ra khi đăng bài.';
+
+      if (msg.toLowerCase().includes('toxic') || msg.toLowerCase().includes('kiểm duyệt') || msg.toLowerCase().includes('non-it')) {
+        setAiWarning(`Hệ thống QualityService phát hiện nội dung có thể vi phạm tiêu chuẩn cộng đồng: "${msg}". Vui lòng điều chỉnh từ ngữ.`);
+      } else {
+        setErrorMessage(msg);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const parsedTags = tagsInput.split(',').map((t) => t.trim()).filter(Boolean);
@@ -54,7 +102,7 @@ public void ConfigureServices(IServiceCollection services)
         </div>
 
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => setAiWarning(!aiWarning)}>
+          <Button variant="outline" size="sm" onClick={() => setAiWarning(aiWarning ? null : 'Cảnh báo mẫu: Nội dung có thể vi phạm tiêu chuẩn cộng đồng.')}>
             {aiWarning ? 'Tắt thử nghiệm AI' : 'Thử nghiệm cảnh báo AI'}
           </Button>
           <Button variant="primary" size="sm" icon="send" isLoading={isSubmitting} onClick={handlePublish}>
@@ -63,7 +111,7 @@ public void ConfigureServices(IServiceCollection services)
         </div>
       </div>
 
-      {/* AI Toxicity Alert Banner (if simulated) */}
+      {/* AI Toxicity Alert Banner */}
       {aiWarning && (
         <div className="p-4 bg-status-danger/10 border border-status-danger/30 rounded-card flex items-start gap-3 text-xs">
           <div className="text-status-danger mt-0.5">
@@ -71,12 +119,19 @@ public void ConfigureServices(IServiceCollection services)
           </div>
           <div className="flex-1">
             <h4 className="font-bold text-status-danger text-sm mb-1">
-              Cảnh báo Kiểm duyệt AI HuggingFace (toxicityScore: 0.88 &gt; 0.8)
+              Cảnh báo Kiểm duyệt AI QualityService
             </h4>
             <p className="text-text-muted leading-relaxed">
-              Bài viết của bạn chứa một số từ ngữ có thể vi phạm tiêu chuẩn cộng đồng. Nếu xuất bản, bài viết sẽ được tự động chuyển sang hàng chờ kiểm duyệt (SCR-20) trước khi hiển thị công khai.
+              {aiWarning}
             </p>
           </div>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="p-3 bg-status-danger/10 border border-status-danger/30 rounded-btn text-xs text-status-danger flex items-center gap-2">
+          <AppIcon name="alert" size={14} />
+          <span>{errorMessage}</span>
         </div>
       )}
 
@@ -98,11 +153,21 @@ public void ConfigureServices(IServiceCollection services)
             onChange={(e) => setTechZone(e.target.value)}
             className="w-1/2 bg-surface-elevated border border-surface-border text-text-main text-xs rounded-btn px-3 h-10 focus:outline-none focus:border-brand-primary"
           >
-            <option value="dotnet">.NET Core</option>
-            <option value="react">React & UI</option>
-            <option value="microservices">Microservices</option>
-            <option value="crawler">GitHub Crawler</option>
-            <option value="devops">DevOps</option>
+            {techZoneList.length > 0 ? (
+              techZoneList.map((tz) => (
+                <option key={tz.id} value={tz.id}>
+                  {tz.name}
+                </option>
+              ))
+            ) : (
+              <>
+                <option value="dotnet">.NET Core & C#</option>
+                <option value="python-ai">Python & AI / Data</option>
+                <option value="typescript-react">TypeScript & React</option>
+                <option value="golang">Go & Cloud Native</option>
+                <option value="devops">DevOps & Container</option>
+              </>
+            )}
           </select>
 
           <Input

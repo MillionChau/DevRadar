@@ -12,100 +12,161 @@ interface ManagedPost extends Post {
   isHidden: boolean;
 }
 
-const MOCK_ADMIN_POSTS: ManagedPost[] = [
-  {
-    id: 'post-1',
-    title: 'Benchmarking Rust vs Go for High-Throughput Realtime Ingestion Engines',
-    contentSnippet: 'In this benchmark, we put Actix-Web, Axum, Gin, and Fiber against an ingestion workload of 250k events/sec...',
-    author: {
-      id: 'u-101',
-      username: 'alex_turner',
-      fullName: 'Alex Turner',
-      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces',
-      reputationScore: 1420,
-      role: 'Member'
-    },
-    techZone: { id: 'tz-rust', name: 'Rust Ecosystem', slug: 'rust', color: '#f97316' },
-    tags: ['rust', 'go', 'performance'],
-    createdAt: '2026-03-24T09:15:00Z',
-    likeCount: 384,
-    commentCount: 42,
-    bookmarkCount: 95,
-    viewCount: 3120,
-    toxicityScore: 0.02,
-    qualityScore: 94,
-    isPinned: true,
-    isHidden: false
-  },
-  {
-    id: 'post-2',
-    title: 'Deep Dive into .NET 9 Native AOT: Memory Footprint and Cold-Start Analysis',
-    contentSnippet: 'With .NET 9 Native AOT, container startup drops to sub-10ms. Here is the disassembled profile and benchmark harness...',
-    author: {
-      id: 'u-102',
-      username: 'sarah_j',
-      fullName: 'Sarah Jenkins',
-      avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=faces',
-      reputationScore: 3450,
-      role: 'Moderator'
-    },
-    techZone: { id: 'tz-dotnet', name: '.NET & C#', slug: 'dotnet', color: '#8b5cf6' },
-    tags: ['dotnet', 'aot', 'csharp'],
-    createdAt: '2026-03-23T14:30:00Z',
-    likeCount: 295,
-    commentCount: 31,
-    bookmarkCount: 82,
-    viewCount: 2450,
-    toxicityScore: 0.01,
-    qualityScore: 98,
-    isPinned: false,
-    isHidden: false
-  },
-  {
-    id: 'post-3',
-    title: 'BUY CRYPTO NOW! 1000x GUARANTEED AIRDROP TOKEN CLAIM',
-    contentSnippet: 'Click link to claim your free reward tokens immediately before snapshot closes...',
-    author: {
-      id: 'u-105',
-      username: 'spam_bot99',
-      fullName: 'Crypto Promotion Bot',
-      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=faces',
-      reputationScore: -15,
-      role: 'Guest'
-    },
-    techZone: { id: 'tz-rust', name: 'Rust Ecosystem', slug: 'rust', color: '#f97316' },
-    tags: ['crypto', 'airdrop', 'promo'],
-    createdAt: '2026-03-25T01:10:00Z',
-    likeCount: 0,
-    commentCount: 2,
-    bookmarkCount: 0,
-    viewCount: 15,
-    toxicityScore: 0.88,
-    qualityScore: 12,
-    isPinned: false,
-    isHidden: true
-  }
-];
+import { adminApi } from '../../api';
+import { recordActivity } from '../../utils/activityLogger';
 
 export const AdminPosts: React.FC = () => {
-  const [posts, setPosts] = useState<ManagedPost[]>(MOCK_ADMIN_POSTS);
+  const [posts, setPosts] = useState<ManagedPost[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'flagged' | 'hidden' | 'pinned'>('all');
 
-  const handleTogglePin = (id: string) => {
-    setPosts(prev =>
-      prev.map(p => (p.id === id ? { ...p, isPinned: !p.isPinned } : p))
-    );
+  const fetchAdminPosts = () => {
+    setIsLoading(true);
+    adminApi
+      .getPosts({ pageNumber: 1, pageSize: 50 })
+      .then((res: any) => {
+        const raw = res?.data || res;
+        const items = raw?.items || (Array.isArray(raw) ? raw : []);
+        if (Array.isArray(items)) {
+          const mapped: ManagedPost[] = items.map((p: any) => {
+            const lines = (p.content || '').split('\n').filter(Boolean);
+            const title = lines.length > 0 ? lines[0].replace(/^[#\s*]+/, '') : 'Bài viết cộng đồng';
+            return {
+              id: p.id,
+              title: p.title || title,
+              contentSnippet: p.summary || (lines.length > 1 ? lines[1] : p.content) || '',
+              author: {
+                id: p.authorId || p.createdBy || 'u-1',
+                username: p.authorUserName || 'dev',
+                fullName: p.authorName || 'Dev Member',
+                avatarUrl: p.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100',
+                reputationScore: 1200,
+                role: 'Member',
+              },
+              techZone: { id: p.techZoneId || 'tz-1', name: p.techZoneName || '.NET Core & C#', slug: 'general', color: '#3178C6' },
+              tags: typeof p.tags === 'string' ? p.tags.split(',').map((t: string) => t.trim()) : p.tags || [],
+              createdAt: p.createdDate || new Date().toISOString(),
+              likeCount: p.likesCount ?? 0,
+              commentCount: p.commentsCount ?? 0,
+              bookmarkCount: p.bookmarksCount ?? 0,
+              viewCount: p.viewsCount ?? 0,
+              toxicityScore: p.isApproved === 0 ? 0.85 : 0.02,
+              qualityScore: p.isApproved === 0 ? 30 : 92,
+              isPinned: p.isPinned === 1 || p.isPinned === true,
+              isHidden: p.status === 2 || p.isApproved === 0,
+            };
+          });
+          setPosts(mapped);
+        }
+      })
+      .catch((err) => {
+        console.error('Could not load live admin posts:', err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   };
 
-  const handleToggleHide = (id: string) => {
+  React.useEffect(() => {
+    fetchAdminPosts();
+  }, []);
+
+  const handleTogglePin = async (id: string) => {
+    const target = posts.find(p => p.id === id);
+    if (!target) return;
+    const nextPin = !target.isPinned;
     setPosts(prev =>
-      prev.map(p => (p.id === id ? { ...p, isHidden: !p.isHidden } : p))
+      prev.map(p => (p.id === id ? { ...p, isPinned: nextPin } : p))
     );
+    try {
+      await adminApi.pinPost(id, nextPin);
+      recordActivity({
+        action: nextPin ? 'PIN_POST' : 'UNPIN_POST',
+        action_label: nextPin ? `Ghim bài viết "${target.title}" lên đầu TechZone` : `Bỏ ghim bài viết "${target.title}"`,
+        category: 'CONTENT',
+        target_type: 'POST',
+        target_name: target.title,
+        target_id: id,
+        status: 'SUCCESS',
+        details: { is_pinned: nextPin, author: target.author?.displayName || target.author?.fullName }
+      });
+    } catch (err) {
+      console.warn('Could not toggle pin on server:', err);
+    }
   };
 
-  const handleRecheckAI = (id: string) => {
-    alert(`Triggered Python AI Quality & Toxicity re-analysis worker for post: ${id}`);
+  const handleToggleHide = async (id: string) => {
+    const target = posts.find(p => p.id === id);
+    if (!target) return;
+
+    const nextState = !target.isHidden;
+    setPosts(prev =>
+      prev.map(p => (p.id === id ? { ...p, isHidden: nextState } : p))
+    );
+
+    try {
+      if (nextState) {
+        await adminApi.hidePost(id, 'Chủ động ẩn vi phạm quy chuẩn cộng đồng');
+      } else {
+        await adminApi.restorePost(id);
+      }
+      recordActivity({
+        action: nextState ? 'HIDE_POST' : 'RESTORE_POST',
+        action_label: nextState ? `Ẩn bài viết vi phạm "${target.title}"` : `Khôi phục bài viết "${target.title}"`,
+        category: 'MODERATION',
+        target_type: 'POST',
+        target_name: target.title,
+        target_id: id,
+        status: 'SUCCESS',
+        details: { is_hidden: nextState, author: target.author?.displayName || target.author?.fullName }
+      });
+    } catch (err) {
+      console.warn('Failed to update post status on server:', err);
+    }
+  };
+
+  const handleRecheckAI = async (id: string) => {
+    const target = posts.find(p => p.id === id);
+    if (!target) return;
+    try {
+      await adminApi.recheckPostAI(id, target.contentSnippet || target.title);
+      recordActivity({
+        action: 'AI_RECHECK_POST',
+        action_label: `Kích hoạt AI kiểm tra chất lượng & độc hại cho bài viết "${target.title}"`,
+        category: 'CONTENT',
+        target_type: 'POST',
+        target_name: target.title,
+        target_id: id,
+        status: 'SUCCESS'
+      });
+      alert(`Đã phân tích lại bài viết qua AI Quality & Toxicity Engine!`);
+      fetchAdminPosts();
+    } catch (err) {
+      console.warn('Could not run AI re-check on server:', err);
+      alert(`Đã gửi yêu cầu tái phân tích AI cho bài viết ${id}.`);
+    }
+  };
+
+  const handleDeletePost = async (id: string) => {
+    const target = posts.find(p => p.id === id);
+    if (!confirm('Bạn có chắc chắn muốn xóa bài viết này vĩnh viễn khỏi cộng đồng?')) return;
+    setPosts(prev => prev.filter(p => p.id !== id));
+    try {
+      await adminApi.deletePost(id);
+      recordActivity({
+        action: 'DELETE_POST',
+        action_label: `Xóa vĩnh viễn bài viết "${target?.title || id}"`,
+        category: 'MODERATION',
+        target_type: 'POST',
+        target_name: target?.title || id,
+        target_id: id,
+        status: 'SUCCESS'
+      });
+      fetchAdminPosts();
+    } catch (err) {
+      console.warn('Could not delete post on server:', err);
+    }
   };
 
   const filtered = posts.filter(p => {
@@ -175,7 +236,27 @@ export const AdminPosts: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-border-default/60">
-            {filtered.map(p => (
+            {isLoading ? (
+              <tr>
+                <td colSpan={6} className="py-12 text-center text-text-secondary">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-6 h-6 border-2 border-primary-blue border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs">Đang tải danh sách bài viết từ cơ sở dữ liệu Community...</span>
+                  </div>
+                </td>
+              </tr>
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-12 text-center text-text-secondary">
+                  <div className="flex flex-col items-center gap-2">
+                    <AppIcon name="FileText" size={32} className="text-text-tertiary" />
+                    <span className="text-sm font-medium text-text-primary">Không tìm thấy bài viết nào</span>
+                    <span className="text-xs text-text-tertiary">Thử thay đổi bộ lọc trạng thái hoặc từ khóa tìm kiếm.</span>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              filtered.map(p => (
               <tr key={p.id} className="hover:bg-surface-elevated/40 transition-colors">
                 <td className="py-3 px-4 max-w-sm">
                   <div className="flex items-start gap-2">
@@ -256,10 +337,18 @@ export const AdminPosts: React.FC = () => {
                     >
                       {p.isHidden ? 'Show' : 'Hide'}
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon="Trash2"
+                      className="text-status-danger hover:bg-status-danger/10"
+                      onClick={() => handleDeletePost(p.id)}
+                      title="Delete Post"
+                    />
                   </div>
                 </td>
               </tr>
-            ))}
+            )))}
           </tbody>
         </table>
       </Card>

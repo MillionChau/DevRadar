@@ -6,6 +6,8 @@ import Badge from '../../components/common/Badge';
 import Input from '../../components/common/Input';
 import { AppIcon } from '../../components/common/Icon';
 
+import { communityApi } from '../../api';
+
 export const EditPost: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -26,13 +28,51 @@ app.MapReverseProxy(proxyPipeline => {
 `);
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  React.useEffect(() => {
+    if (!id) return;
+    communityApi
+      .getPostById(id)
+      .then((data: any) => {
+        if (data) {
+          const lines = (data.content || '').split('\n').filter(Boolean);
+          if (lines.length > 0) {
+            setTitle(lines[0].replace(/^[#\s*]+/, ''));
+            setContent(lines.slice(1).join('\n'));
+          } else {
+            setContent(data.content || '');
+          }
+          if (data.tags) {
+            setTagsInput(typeof data.tags === 'string' ? data.tags : data.tags.join(', '));
+          }
+          if (data.techZoneId) {
+            setTechZone(data.techZoneId);
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not load post to edit, using default:', err);
+      });
+  }, [id]);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
-      navigate(`/posts/${id || 'post-001'}`);
-    }, 600);
+    const fullContent = `# ${title.trim()}\n\n${content.trim()}`;
+
+    if (id) {
+      try {
+        await communityApi.updatePost(id, {
+          content: fullContent,
+          techZoneId: techZone || undefined,
+          tags: tagsInput,
+        });
+      } catch (err) {
+        console.warn('Could not update post on server:', err);
+      }
+    }
+
+    setIsSaving(false);
+    navigate(`/posts/${id || 'post-001'}`);
   };
 
   return (

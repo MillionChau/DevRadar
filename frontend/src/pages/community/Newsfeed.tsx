@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import { AppIcon } from '../../components/common/Icon';
+import EmptyState from '../../components/common/EmptyState';
 import { Post } from '../../types';
+import { communityApi, analyticsApi } from '../../api';
 
 interface TechHealthItem {
   name: string;
@@ -17,6 +19,9 @@ interface TechHealthItem {
 export const Newsfeed: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'latest' | 'trending' | 'relevant'>('latest');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [topRepos, setTopRepos] = useState<any[]>([]);
 
   const techHealthList: TechHealthItem[] = [
     { name: '.NET 10 (C#)', score: 95, tier: 'A+', trend: '↗ +4.8%', fillPct: 95 },
@@ -26,80 +31,86 @@ export const Newsfeed: React.FC = () => {
     { name: 'TypeScript (React)', score: 86, tier: 'B+', trend: '↘ -1.2%', fillPct: 86 },
   ];
 
-  const posts: Post[] = [
-    {
-      id: 'post-001',
-      title: 'Kiến trúc Microservices với .NET 10, YARP Reverse Proxy & PostgreSQL',
-      summary: 'Chia sẻ kinh nghiệm thiết kế kiến trúc phân tán thực tế cho dự án tốt nghiệp DevRadar: Xử lý JWT rotation, Rate limiting và tích hợp kiểm duyệt AI tự động qua Python QualityService.',
-      content: '',
-      authorId: 'usr-001',
-      author: {
-        displayName: 'Châu Hoàng Tấn',
-        userName: 'chautantan',
-        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100',
-        reputationPoints: 1420,
-      },
-      techZoneId: 'tz-dotnet',
-      techZoneName: '.NET Core & C#',
-      tags: ['dotnet10', 'microservices', 'yarp', 'postgres'],
-      likeCount: 128,
-      commentCount: 24,
-      bookmarkCount: 45,
-      isLiked: true,
-      isBookmarked: false,
-      status: 'Published',
-      toxicityScore: 0.05,
-      createdAt: '2 giờ trước',
-    },
-    {
-      id: 'post-002',
-      title: 'Xây dựng GitHub Crawler Engine & Phân tích Radar Chart 5 trục với Python',
-      summary: 'Khám phá giải pháp thu thập dữ liệu GitHub qua GraphQL API, tính toán điểm uy tín Repo Health (A+ 94/100) và trực quan hóa năng lực lập trình viên trên đồ thị ngũ giác.',
-      content: '',
-      authorId: 'usr-002',
-      author: {
-        displayName: 'Lê Minh Triết',
-        userName: 'minhtriet_dev',
-        avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100',
-        reputationPoints: 980,
-      },
-      techZoneId: 'tz-crawler',
-      techZoneName: 'GitHub & Data Crawler',
-      tags: ['python', 'github-api', 'crawler', 'mongodb'],
-      likeCount: 96,
-      commentCount: 18,
-      bookmarkCount: 32,
-      isLiked: false,
-      isBookmarked: true,
-      status: 'Published',
-      toxicityScore: 0.02,
-      createdAt: '5 giờ trước',
-    },
-    {
-      id: 'post-003',
-      title: 'Tích hợp AI HuggingFace để Kiểm duyệt Bình luận Độc hại Real-time trong Community',
-      summary: 'Ứng dụng mô hình RoBERTa phân tích chỉ số toxicityScore. Nếu vượt ngưỡng 0.8, tự động chuyển vào Hàng chờ kiểm duyệt AI (SCR-20) để bảo vệ trải nghiệm cộng đồng.',
-      content: '',
-      authorId: 'usr-003',
-      author: {
-        displayName: 'Trần Hoài Nam',
-        userName: 'namtran_ai',
-        avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100',
-        reputationPoints: 1150,
-      },
-      techZoneId: 'tz-ai',
-      techZoneName: 'AI Quality & Safety',
-      tags: ['huggingface', 'nlp', 'moderation', 'fastapi'],
-      likeCount: 84,
-      commentCount: 15,
-      bookmarkCount: 29,
-      isLiked: false,
-      isBookmarked: false,
-      status: 'Published',
-      toxicityScore: 0.01,
-      createdAt: '1 ngày trước',
-    },
-  ];
+  useEffect(() => {
+    let isMounted = true;
+    const fetchPosts = async () => {
+      setIsLoading(true);
+      try {
+        const sortByParam = activeTab === 'trending' ? 'trending' : 'latest';
+        const res = await communityApi.getPosts({ sortBy: sortByParam });
+        if (isMounted) {
+          setPosts(res.items || []);
+        }
+      } catch (err) {
+        console.warn('Could not fetch live posts from API Gateway:', err);
+        if (isMounted) setPosts([]);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    fetchPosts();
+
+    // Tải danh sách top repos từ Crawler
+    analyticsApi
+      .getTopRepositories(3)
+      .then((repos) => {
+        if (isMounted && Array.isArray(repos) && repos.length > 0) {
+          setTopRepos(repos);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTab]);
+
+  const handleToggleLike = async (postId: string) => {
+    // Optimistic UI update
+    setPosts((prev) =>
+      prev.map((p) => {
+        if (p.id === postId) {
+          const nextLiked = !p.isLiked;
+          return {
+            ...p,
+            isLiked: nextLiked,
+            likeCount: nextLiked ? p.likeCount + 1 : Math.max(0, p.likeCount - 1),
+          };
+        }
+        return p;
+      })
+    );
+
+    try {
+      await communityApi.toggleLikePost(postId);
+    } catch (err) {
+      console.warn('Failed to toggle like on backend:', err);
+    }
+  };
+
+  const handleToggleBookmark = async (postId: string) => {
+    // Optimistic UI update
+    setPosts((prev) =>
+      prev.map((p) => {
+        if (p.id === postId) {
+          const nextBookmarked = !p.isBookmarked;
+          return {
+            ...p,
+            isBookmarked: nextBookmarked,
+            bookmarkCount: nextBookmarked ? p.bookmarkCount + 1 : Math.max(0, p.bookmarkCount - 1),
+          };
+        }
+        return p;
+      })
+    );
+
+    try {
+      await communityApi.toggleBookmarkPost(postId);
+    } catch (err) {
+      console.warn('Failed to toggle bookmark on backend:', err);
+    }
+  };
 
   const filteredPosts = selectedTag
     ? posts.filter((p) => p.tags.includes(selectedTag))
@@ -156,7 +167,27 @@ export const Newsfeed: React.FC = () => {
 
         {/* Post Cards List */}
         <div className="flex flex-col gap-4">
-          {filteredPosts.map((post) => (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center p-16 text-center bg-surface-card border border-surface-border rounded-card">
+              <div className="w-10 h-10 border-2 border-brand-primary border-t-transparent rounded-full animate-spin mb-4" />
+              <p className="text-sm text-text-muted">Đang tải bảng tin công nghệ từ máy chủ...</p>
+            </div>
+          ) : filteredPosts.length === 0 ? (
+            <EmptyState
+              icon="fileText"
+              title="Chưa có bài viết nào"
+              description={
+                selectedTag
+                  ? `Chưa có bài viết nào được gắn thẻ #${selectedTag}.`
+                  : 'Chưa có bài viết nào trong danh mục này. Hãy là người đầu tiên chia sẻ góc nhìn kỹ thuật!'
+              }
+              actionLabel="Tạo bài viết mới"
+              onAction={() => {
+                window.location.href = '/editor/new';
+              }}
+            />
+          ) : (
+            filteredPosts.map((post) => (
             <Card
               key={post.id}
               variant="interactive"
@@ -225,6 +256,7 @@ export const Newsfeed: React.FC = () => {
               <div className="flex items-center justify-between pt-3 border-t border-surface-border text-xs text-text-muted">
                 <div className="flex items-center gap-4">
                   <button
+                    onClick={() => handleToggleLike(post.id)}
                     className={`flex items-center gap-1.5 hover:text-status-danger transition-colors ${
                       post.isLiked ? 'text-status-danger font-semibold' : ''
                     }`}
@@ -242,6 +274,7 @@ export const Newsfeed: React.FC = () => {
                   </Link>
 
                   <button
+                    onClick={() => handleToggleBookmark(post.id)}
                     className={`flex items-center gap-1.5 hover:text-brand-secondary transition-colors ${
                       post.isBookmarked ? 'text-brand-secondary font-semibold' : ''
                     }`}
@@ -260,7 +293,7 @@ export const Newsfeed: React.FC = () => {
                 </Link>
               </div>
             </Card>
-          ))}
+          )))}
         </div>
       </div>
 
@@ -318,26 +351,33 @@ export const Newsfeed: React.FC = () => {
         {/* Top Repos Widget (SCR-04 Wireframe) */}
         <Card variant="default" padding="md" className="flex flex-col gap-3">
           <h3 className="text-xs font-bold text-text-main border-b border-surface-border pb-2.5">
-            REPO NỔI BẬT CỦA BẠN
+            REPO THEO DÕI NỔI BẬT
           </h3>
           <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1 text-xs">
-              <Link to="/analytics/repo-health" className="font-bold text-text-main hover:text-brand-secondary">
-                MillionChau/DevRadar
-              </Link>
-              <span className="text-[11px] text-text-subtle">
-                ⭐ 95 • Fork 12 • Health: <strong className="text-status-success font-mono">94/100 (A+)</strong>
-              </span>
-            </div>
-            <div className="h-[1px] bg-surface-border" />
-            <div className="flex flex-col gap-1 text-xs">
-              <Link to="/analytics/repo-health" className="font-bold text-text-main hover:text-brand-secondary">
-                MillionChau/Microservices-Hub
-              </Link>
-              <span className="text-[11px] text-text-subtle">
-                ⭐ 48 • Fork 6 • Health: <strong className="text-brand-secondary font-mono">88/100 (A)</strong>
-              </span>
-            </div>
+            {topRepos.length > 0 ? (
+              topRepos.map((repo, idx) => (
+                <React.Fragment key={repo.full_name || repo.name || idx}>
+                  {idx > 0 && <div className="h-[1px] bg-surface-border" />}
+                  <div className="flex flex-col gap-1 text-xs">
+                    <Link to="/analytics/repo-health" className="font-bold text-text-main hover:text-brand-secondary truncate">
+                      {repo.full_name || repo.name}
+                    </Link>
+                    <span className="text-[11px] text-text-subtle">
+                      ⭐ {repo.stars || repo.stargazers_count || 0} • Fork {repo.forks || 0} • Ngôn ngữ: <strong className="text-brand-secondary font-mono">{repo.language || 'N/A'}</strong>
+                    </span>
+                  </div>
+                </React.Fragment>
+              ))
+            ) : (
+              <div className="flex flex-col gap-1 text-xs">
+                <Link to="/analytics/repo-health" className="font-bold text-text-main hover:text-brand-secondary">
+                  DevRadar/Microservices-Hub
+                </Link>
+                <span className="text-[11px] text-text-subtle">
+                  Phân tích sức khỏe repo và commit metrics từ GitHub.
+                </span>
+              </div>
+            )}
           </div>
         </Card>
       </div>

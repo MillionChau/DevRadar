@@ -1,16 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import Input from '../../components/common/Input';
 import { AppIcon } from '../../components/common/Icon';
 import { TechZone } from '../../types';
+import { communityApi } from '../../api';
 
 export const TechZones: React.FC = () => {
   const [search, setSearch] = useState('');
   const [techZones, setTechZones] = useState<TechZone[]>([
     {
-      id: 'tz-1',
+      id: 'a1111111-1111-1111-1111-111111111111',
       name: '.NET Core & C#',
       slug: 'dotnet',
       description: 'Hệ sinh thái Microsoft .NET 10, ASP.NET Core, C# và kiến trúc Enterprise hiện đại.',
@@ -19,44 +20,35 @@ export const TechZones: React.FC = () => {
       isFollowing: true,
     },
     {
-      id: 'tz-2',
-      name: 'React & Frontend',
-      slug: 'react',
-      description: 'Phát triển giao diện SPA hiện đại, Vite, Next.js, Tailwind CSS và State Management.',
+      id: 'a2222222-2222-2222-2222-222222222222',
+      name: 'Python & AI / Data',
+      slug: 'python-ai',
+      description: 'Trí tuệ nhân tạo, LLM, Machine Learning, FastAPI và PyTorch.',
       postCount: 198,
       followerCount: 3850,
       isFollowing: false,
     },
     {
-      id: 'tz-3',
-      name: 'Microservices & Distributed Systems',
-      slug: 'microservices',
-      description: 'Kiến trúc dịch vụ phân tán, YARP Gateway, Event-driven, RabbitMQ và Kafka.',
+      id: 'a3333333-3333-3333-3333-333333333333',
+      name: 'TypeScript & React',
+      slug: 'typescript-react',
+      description: 'Phát triển giao diện SPA hiện đại, Vite, Next.js, Tailwind CSS và State Management.',
       postCount: 87,
       followerCount: 1940,
       isFollowing: true,
     },
     {
-      id: 'tz-4',
-      name: 'GitHub Crawler & Data Analytics',
-      slug: 'crawler',
-      description: 'Thu thập mã nguồn, trích xuất metrics đóng góp, tính toán Radar Chart và Repo Health.',
+      id: 'a4444444-4444-4444-4444-444444444444',
+      name: 'Go & Cloud Native',
+      slug: 'golang',
+      description: 'Golang, High Concurrency, Kubernetes, Microservices và gRPC.',
       postCount: 64,
       followerCount: 1250,
       isFollowing: false,
     },
     {
-      id: 'tz-5',
-      name: 'AI Quality & Moderation',
-      slug: 'ai-quality',
-      description: 'Kiểm duyệt nội dung tự động bằng AI HuggingFace, NLP và bảo vệ an toàn cộng đồng.',
-      postCount: 52,
-      followerCount: 1100,
-      isFollowing: false,
-    },
-    {
-      id: 'tz-6',
-      name: 'DevOps, CI/CD & Cloud Infrastructure',
+      id: 'a5555555-5555-5555-5555-555555555555',
+      name: 'DevOps & Container',
       slug: 'devops',
       description: 'Tự động hóa triển khai, Docker Compose, Kubernetes, GitHub Actions và Monitoring.',
       postCount: 76,
@@ -64,6 +56,19 @@ export const TechZones: React.FC = () => {
       isFollowing: false,
     },
   ]);
+
+  useEffect(() => {
+    communityApi
+      .getTechZones()
+      .then((zones) => {
+        if (zones && zones.length > 0) {
+          setTechZones(zones);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not fetch live techzones, using initial list:', err);
+      });
+  }, []);
 
   const toggleFollow = (id: string) => {
     setTechZones((prev) =>

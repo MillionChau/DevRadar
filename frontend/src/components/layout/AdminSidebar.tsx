@@ -14,9 +14,11 @@ export const AdminSidebar: React.FC = () => {
   const adminItems: AdminMenuItem[] = [
     { label: 'Quản trị tài khoản', path: '/admin/users', icon: 'user' },
     { label: 'Quản lý bài viết', path: '/admin/posts', icon: 'fileText' },
+    { label: 'Quản lý báo cáo công nghệ', path: '/admin/tech-reports', icon: 'fileText', badge: 'AI CMS' },
     { label: 'Hàng chờ kiểm duyệt AI', path: '/admin/reports', icon: 'shield', badge: 'HuggingFace' },
     { label: 'Cấu hình TechZone', path: '/admin/techzones', icon: 'layers' },
     { label: 'Giám sát GitHub Crawler', path: '/admin/crawler', icon: 'cpu', badge: 'Port 8000' },
+    { label: 'Nhật ký hệ thống (Logs)', path: '/admin/logs', icon: 'terminal', badge: 'Live' },
   ];
 
   const navClass = ({ isActive }: { isActive: boolean }) =>

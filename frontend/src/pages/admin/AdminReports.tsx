@@ -1,80 +1,84 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { AppIcon } from '../../components/common/Icon';
 import { ModerationReport } from '../../types';
 
-const MOCK_REPORTS: ModerationReport[] = [
-  {
-    id: 'rep-1',
-    targetType: 'post',
-    targetId: 'post-3',
-    reason: 'Cryptocurrency scam spam and phishing links in benchmark section.',
-    reporter: {
-      id: 'u-101',
-      username: 'alex_turner',
-      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces'
-    },
-    reportedUser: {
-      id: 'u-105',
-      username: 'spam_bot99',
-      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=faces'
-    },
-    status: 'pending',
-    aiConfidence: 0.96,
-    createdAt: '1 hour ago'
-  },
-  {
-    id: 'rep-2',
-    targetType: 'comment',
-    targetId: 'comm-88',
-    reason: 'Aggressive ad-hominem insult targeting junior author.',
-    reporter: {
-      id: 'u-102',
-      username: 'sarah_j',
-      avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=faces'
-    },
-    reportedUser: {
-      id: 'u-109',
-      username: 'troll_coder',
-      avatarUrl: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=100&h=100&fit=crop&crop=faces'
-    },
-    status: 'pending',
-    aiConfidence: 0.82,
-    createdAt: '3 hours ago'
-  },
-  {
-    id: 'rep-3',
-    targetType: 'user',
-    targetId: 'u-105',
-    reason: 'Mass automated profile creation for link farm seo.',
-    reporter: {
-      id: 'u-104',
-      username: 'marcus_k',
-      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=faces'
-    },
-    reportedUser: {
-      id: 'u-105',
-      username: 'spam_bot99',
-      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=faces'
-    },
-    status: 'resolved',
-    aiConfidence: 0.99,
-    createdAt: '1 day ago'
-  }
-];
+import { adminApi } from '../../api';
+import { recordActivity } from '../../utils/activityLogger';
 
 export const AdminReports: React.FC = () => {
-  const [reports, setReports] = useState<ModerationReport[]>(MOCK_REPORTS);
+  const [reports, setReports] = useState<ModerationReport[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'resolved' | 'dismissed'>('pending');
   const [activeReport, setActiveReport] = useState<ModerationReport | null>(null);
 
-  const handleUpdateStatus = (id: string, newStatus: ModerationReport['status']) => {
+  const fetchReports = () => {
+    setIsLoading(true);
+    adminApi
+      .getReports()
+      .then((items) => {
+        const raw = Array.isArray(items) ? items : (items as any)?.items || [];
+        if (Array.isArray(raw)) {
+          const mapped: ModerationReport[] = raw.map((r: any) => ({
+            id: r.id,
+            targetType: 'post',
+            targetId: r.postId,
+            reason: r.reason || 'Báo cáo vi phạm tiêu chuẩn cộng đồng',
+            reporter: {
+              id: r.reporterId || 'usr-anon',
+              username: 'thanh_vien_bao_cao',
+              avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100',
+            },
+            reportedUser: {
+              id: r.authorId || 'usr-author',
+              username: 'tac_gia_bai_viet',
+              avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100',
+            },
+            status: r.status === 0 ? 'pending' : (r.status === 1 ? 'resolved' : 'dismissed'),
+            aiConfidence: 0.94,
+            createdAt: r.createdDate ? new Date(r.createdDate).toLocaleDateString('vi-VN') : 'Vừa xong',
+          }));
+          setReports(mapped);
+        }
+      })
+      .catch((err) => {
+        console.error('Could not load reports from server:', err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchReports();
+  }, [statusFilter]);
+
+  const handleUpdateStatus = async (id: string, newStatus: ModerationReport['status']) => {
+    const reportItem = reports.find(r => r.id === id);
     setReports(prev =>
       prev.map(r => (r.id === id ? { ...r, status: newStatus } : r))
     );
     setActiveReport(null);
+
+    try {
+      const approve = newStatus === 'resolved';
+      await adminApi.resolveReport(id, approve, approve ? 'Ẩn nội dung vi phạm' : 'Bác bỏ báo cáo');
+      recordActivity({
+        action: approve ? 'MODERATE_REPORT_RESOLVE' : 'MODERATE_REPORT_DISMISS',
+        action_label: approve ? `Phê duyệt xử lý báo cáo vi phạm #${id} (Ẩn nội dung)` : `Bác bỏ báo cáo vi phạm #${id}`,
+        category: 'MODERATION',
+        target_type: 'REPORT',
+        target_name: `Báo cáo #${id} (${reportItem?.reason || 'Nội dung phản cảm'})`,
+        target_id: id,
+        status: 'SUCCESS',
+        details: { target_post_id: reportItem?.targetId, resolution: newStatus }
+      });
+      fetchReports();
+    } catch (err) {
+      console.warn('Could not resolve report on server:', err);
+    }
   };
 
   const filtered = reports.filter(r => {
@@ -155,7 +159,27 @@ export const AdminReports: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-border-default/60">
-            {filtered.map(r => (
+            {isLoading ? (
+              <tr>
+                <td colSpan={6} className="py-12 text-center text-text-secondary">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-6 h-6 border-2 border-primary-blue border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs">Đang kiểm tra hàng chờ báo cáo vi phạm từ cơ sở dữ liệu...</span>
+                  </div>
+                </td>
+              </tr>
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-12 text-center text-text-secondary">
+                  <div className="flex flex-col items-center gap-2">
+                    <AppIcon name="ShieldCheck" size={32} className="text-status-success" />
+                    <span className="text-sm font-medium text-text-primary">Hàng chờ kiểm duyệt đang trống</span>
+                    <span className="text-xs text-text-tertiary">Hiện không có bài viết hay bình luận nào bị báo cáo vi phạm.</span>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              filtered.map(r => (
               <tr key={r.id} className="hover:bg-surface-elevated/40 transition-colors">
                 <td className="py-3 px-4 max-w-sm">
                   <div className="flex items-center gap-2">
@@ -231,7 +255,7 @@ export const AdminReports: React.FC = () => {
                   </Button>
                 </td>
               </tr>
-            ))}
+            )))}
           </tbody>
         </table>
       </Card>

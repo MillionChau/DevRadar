@@ -1,17 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AppIcon } from '../common/Icon';
 import Button from '../common/Button';
 import Badge from '../common/Badge';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types';
+import { notificationApi } from '../../api';
 
 export const Header: React.FC = () => {
-  const { user, role, switchRole, logout } = useAuth();
+  const { user, role, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [showRoleMenu, setShowRoleMenu] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (user && role !== 'Guest') {
+      notificationApi
+        .getUnreadCount()
+        .then((cnt) => setUnreadCount(cnt))
+        .catch(() => setUnreadCount(0));
+    } else {
+      setUnreadCount(0);
+    }
+  }, [user, role, location.pathname]);
 
   const navLinks = [
     { label: 'Bảng tin', path: '/' },
@@ -89,43 +102,7 @@ export const Header: React.FC = () => {
 
       {/* Right Header Actions */}
       <div className="flex items-center gap-3">
-        {/* Role Demo Switcher */}
-        <div className="relative">
-          <button
-            onClick={() => setShowRoleMenu(!showRoleMenu)}
-            className="text-[11px] font-mono px-2 py-1 rounded bg-surface-elevated border border-surface-border text-text-muted hover:text-text-main transition-colors flex items-center gap-1"
-            title="Đổi vai trò để thử nghiệm phân quyền RBAC"
-          >
-            Role: <span className="text-brand-secondary font-bold">{role}</span>
-            <AppIcon name="chevronDown" size={12} />
-          </button>
-
-          {showRoleMenu && (
-            <div className="absolute right-0 mt-2 w-44 bg-surface-card border border-surface-border rounded-card shadow-xl p-1 z-50 animate-in fade-in zoom-in-95">
-              <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-text-subtle border-b border-surface-border">
-                Chọn vai trò (RBAC)
-              </div>
-              {(['Guest', 'Member', 'Moderator', 'Admin'] as UserRole[]).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => {
-                    switchRole(r);
-                    setShowRoleMenu(false);
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-btn transition-colors ${
-                    role === r
-                      ? 'bg-brand-primary text-white font-semibold'
-                      : 'text-text-muted hover:bg-surface-elevated hover:text-text-main'
-                  }`}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {role !== 'Guest' ? (
+        {role !== 'Guest' && user ? (
           <>
             {/* Create Post Button (SCR-08) */}
             <Link to="/editor/new">
@@ -135,19 +112,108 @@ export const Header: React.FC = () => {
             </Link>
 
             {/* Notifications Bell (SCR-17) */}
-            <Link to="/notifications" className="relative p-2 text-text-muted hover:text-text-main hover:bg-surface-elevated rounded-btn transition-colors">
+            <Link
+              to="/notifications"
+              className="relative p-2 text-text-muted hover:text-text-main hover:bg-surface-elevated rounded-btn transition-colors"
+              title={`${unreadCount} thông báo chưa đọc`}
+            >
               <AppIcon name="bell" size={18} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-brand-secondary ring-2 ring-surface-card" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-status-danger text-white text-[10px] font-bold ring-2 ring-surface-card">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </Link>
 
-            {/* Avatar & Profile */}
-            <Link to="/profile/me" className="flex items-center gap-2 pl-2 border-l border-surface-border">
-              <img
-                src={user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100'}
-                alt={user?.displayName}
-                className="w-8 h-8 rounded-full border border-surface-border object-cover"
-              />
-            </Link>
+            {/* Avatar & Profile Dropdown */}
+            <div className="relative pl-2 border-l border-surface-border">
+              <button
+                type="button"
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-2.5 p-1 rounded-btn hover:bg-surface-elevated transition-colors"
+              >
+                <img
+                  src={user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100'}
+                  alt={user.displayName || user.userName}
+                  className="w-8 h-8 rounded-full border border-surface-border object-cover"
+                />
+                <div className="hidden sm:flex flex-col items-start text-left">
+                  <span className="text-xs font-semibold text-text-main max-w-[120px] truncate leading-tight">
+                    {user.displayName || user.userName}
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold leading-tight ${
+                      role === 'Admin'
+                        ? 'text-brand-secondary'
+                        : role === 'Moderator'
+                        ? 'text-status-warning'
+                        : 'text-text-muted'
+                    }`}
+                  >
+                    {role === 'Admin' ? 'Quản trị viên' : role === 'Moderator' ? 'Điều phối viên' : 'Thành viên'}
+                  </span>
+                </div>
+                <AppIcon name="chevronDown" size={12} className="text-text-muted" />
+              </button>
+
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-56 bg-surface-card border border-surface-border rounded-card shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95">
+                  <div className="px-3 py-2 border-b border-surface-border mb-1">
+                    <p className="text-xs font-bold text-text-main truncate">{user.displayName || user.userName}</p>
+                    <p className="text-[11px] text-text-muted truncate">{user.email}</p>
+                    <div className="mt-1.5">
+                      <Badge variant={role === 'Admin' ? 'role' : 'reputation'} size="sm">
+                        {role === 'Admin' ? '🛡️ Quản trị viên' : role === 'Moderator' ? '⚖️ Điều phối viên' : '👤 Thành viên'}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <Link
+                    to="/profile/me"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center gap-2 px-3 py-2 text-xs text-text-muted hover:text-text-main hover:bg-surface-elevated rounded-btn transition-colors"
+                  >
+                    <AppIcon name="user" size={14} />
+                    <span>Hồ sơ cá nhân</span>
+                  </Link>
+
+                  <Link
+                    to="/bookmarks"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center gap-2 px-3 py-2 text-xs text-text-muted hover:text-text-main hover:bg-surface-elevated rounded-btn transition-colors"
+                  >
+                    <AppIcon name="bookmark" size={14} />
+                    <span>Bài viết đã lưu</span>
+                  </Link>
+
+                  {role === 'Admin' && (
+                    <Link
+                      to="/admin/users"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-2 px-3 py-2 text-xs text-brand-secondary font-semibold hover:bg-surface-elevated rounded-btn transition-colors"
+                    >
+                      <AppIcon name="shield" size={14} />
+                      <span>Trang Quản trị Admin</span>
+                    </Link>
+                  )}
+
+                  <div className="my-1 border-t border-surface-border" />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      logout();
+                      navigate('/auth/login');
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-status-danger hover:bg-status-danger/10 rounded-btn transition-colors text-left"
+                  >
+                    <AppIcon name="lock" size={14} />
+                    <span>Đăng xuất</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </>
         ) : (
           <div className="flex items-center gap-2">

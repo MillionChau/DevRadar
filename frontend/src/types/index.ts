@@ -74,6 +74,7 @@ export interface Post {
   isLiked?: boolean;
   isBookmarked?: boolean;
   status?: 'Published' | 'PendingReview' | 'Draft' | 'Hidden';
+  isApproved?: number;
   toxicityScore?: number;
   qualityScore?: number;
   createdAt: string;
