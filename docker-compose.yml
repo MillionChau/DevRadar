@@ -131,10 +131,13 @@ services:
       - JwtSettings__Audience=DevRadarClients
       - NotificationService__BaseUrl=http://notification-api:8080
       - NotificationService__ApiKey=DevRadar_Internal_Community_Notification_2026
+      - QualityService__BaseUrl=http://quality-api:8001
     depends_on:
       community-db:
         condition: service_healthy
       notification-api:
+        condition: service_started
+      quality-api:
         condition: service_started
 
   notification-api:
@@ -186,6 +189,11 @@ services:
       - MONGODB_DB_NAME=quality
       - ELASTICSEARCH_ENABLED=true
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - AI_API_KEY=${AI_API_KEY:-}
+      - EXTERNAL_AI_ENABLED=${EXTERNAL_AI_ENABLED:-true}
+      - AI_BASE_URL=${AI_BASE_URL:-https://api.unorouter.com/v1}
+      - AI_MODEL=${AI_MODEL:-qwen2.5-coder-32b:free}
+      - AI_TIMEOUT_SECONDS=${AI_TIMEOUT_SECONDS:-12.0}
     depends_on:
       quality-mongo:
         condition: service_healthy
