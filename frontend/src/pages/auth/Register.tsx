@@ -6,6 +6,8 @@ import Button from '../../components/common/Button';
 import { AppIcon } from '../../components/common/Icon';
 import { useAuth } from '../../context/AuthContext';
 
+import { authApi } from '../../api';
+
 export const Register: React.FC = () => {
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -14,6 +16,7 @@ export const Register: React.FC = () => {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -27,13 +30,42 @@ export const Register: React.FC = () => {
       setError('Mật khẩu xác nhận không khớp');
       return;
     }
+    if (password.length < 6) {
+      setError('Mật khẩu phải có độ dài tối thiểu 6 ký tự');
+      return;
+    }
     setLoading(true);
     setError('');
+    setSuccess('');
     try {
-      await login(email, password);
-      navigate('/');
-    } catch (err) {
-      setError('Đăng ký không thành công. Vui lòng thử lại.');
+      const userName = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_');
+      await authApi.register({
+        userName,
+        email,
+        password,
+        confirmPassword,
+        firstName: displayName.split(' ').slice(1).join(' ') || displayName,
+        lastName: displayName.split(' ')[0] || displayName,
+      });
+
+      setSuccess('Đăng ký tài khoản thành công! Đang tự động đăng nhập...');
+      setTimeout(async () => {
+        try {
+          await login(email, password);
+          navigate('/');
+        } catch {
+          navigate('/auth/login');
+        }
+      }, 1000);
+    } catch (err: any) {
+      console.warn('Register via server failed:', err);
+      // Fallback: log in locally
+      try {
+        await login(email, password);
+        navigate('/');
+      } catch {
+        setError(err?.message || 'Đăng ký không thành công. Vui lòng kiểm tra lại thông tin.');
+      }
     } finally {
       setLoading(false);
     }
@@ -74,6 +106,13 @@ export const Register: React.FC = () => {
             <div className="p-3 bg-status-danger/10 border border-status-danger/30 rounded-btn text-xs text-status-danger flex items-center gap-2">
               <AppIcon name="alert" size={14} />
               <span>{error}</span>
+            </div>
+          )}
+
+          {success && (
+            <div className="p-3 bg-status-success/10 border border-status-success/30 rounded-btn text-xs text-status-success flex items-center gap-2">
+              <AppIcon name="check" size={14} />
+              <span>{success}</span>
             </div>
           )}
 

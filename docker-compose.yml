@@ -93,6 +93,39 @@ services:
       timeout: 10s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    container_name: devradar-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: devradar-rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: devradar
+      RABBITMQ_DEFAULT_PASS: devradar2026
+      RABBITMQ_ERLANG_COOKIE: "DEVRADAR_ERLANG_COOKIE_SECRET"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq/mnesia
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   # ==================== Application Services ====================
 
   identity-api:
@@ -107,11 +140,14 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__DefaultConnection=Server=identity-db;Port=5432;Database=devradar-identity;User Id=postgres;Password=${POSTGRES_PASSWORD:-123456}
+      - ConnectionStrings__Redis=redis:6379
       - JwtSettings__Secret=DevRadarSecretKey_SuperSecureKeyForJWTTokenGeneration_2026_SecureApp
       - JwtSettings__Issuer=DevRadarIdentityService
       - JwtSettings__Audience=DevRadarClients
     depends_on:
       identity-db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   community-api:
@@ -126,6 +162,11 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__DefaultConnection=Server=community-db;Port=5432;Database=community-postgres;User Id=postgres;Password=${POSTGRES_PASSWORD:-123456}
+      - ConnectionStrings__Redis=redis:6379
+      - RabbitMQ__HostName=rabbitmq
+      - RabbitMQ__Port=5672
+      - RabbitMQ__UserName=devradar
+      - RabbitMQ__Password=devradar2026
       - JwtSettings__Secret=DevRadarSecretKey_SuperSecureKeyForJWTTokenGeneration_2026_SecureApp
       - JwtSettings__Issuer=DevRadarIdentityService
       - JwtSettings__Audience=DevRadarClients
@@ -139,6 +180,10 @@ services:
         condition: service_started
       quality-api:
         condition: service_started
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   notification-api:
     build:
@@ -152,12 +197,18 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__DefaultConnection=Server=notification-db;Port=5432;Database=notification-postgres;User Id=postgres;Password=${POSTGRES_PASSWORD:-123456}
+      - RabbitMQ__HostName=rabbitmq
+      - RabbitMQ__Port=5672
+      - RabbitMQ__UserName=devradar
+      - RabbitMQ__Password=devradar2026
       - JwtSettings__Secret=DevRadarSecretKey_SuperSecureKeyForJWTTokenGeneration_2026_SecureApp
       - JwtSettings__Issuer=DevRadarIdentityService
       - JwtSettings__Audience=DevRadarClients
       - ApiKey__Key=DevRadar_Internal_Community_Notification_2026
     depends_on:
       notification-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   crawler-api:
@@ -168,13 +219,16 @@ services:
     restart: always
     ports:
       - "8000:8000"
+    env_file:
+      - ./services/CrawlerGithubService/.env
     environment:
-      - MONGODB_URL=mongodb://crawler-mongo:27017/github-crawler
-      - MONGODB_DB_NAME=github-crawler
-      - GITHUB_ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN:-}
-    depends_on:
-      crawler-mongo:
-        condition: service_healthy
+      - MONGODB_URL=${MONGODB_URL:-mongodb+srv://shopee-sentiment:MChau2506@cluster0.qlbix.mongodb.net/github-crawler}
+      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-github-crawler}
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://devradar:devradar2026@rabbitmq:5672/
+    volumes:
+      - ./services/CrawlerGithubService/app:/app/app
+      - ./services/CrawlerGithubService/.env:/app/.env
 
   quality-api:
     build:
@@ -189,15 +243,25 @@ services:
       - MONGODB_DB_NAME=quality
       - ELASTICSEARCH_ENABLED=true
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://devradar:devradar2026@rabbitmq:5672/
       - AI_API_KEY=${AI_API_KEY:-}
+      - AI_API_KEY_2=${AI_API_KEY_2:-}
       - EXTERNAL_AI_ENABLED=${EXTERNAL_AI_ENABLED:-true}
       - AI_BASE_URL=${AI_BASE_URL:-https://api.unorouter.com/v1}
       - AI_MODEL=${AI_MODEL:-qwen2.5-coder-32b:free}
-      - AI_TIMEOUT_SECONDS=${AI_TIMEOUT_SECONDS:-12.0}
+      - AI_TIMEOUT_SECONDS=${AI_TIMEOUT_SECONDS:-4.0}
+    volumes:
+      - ./services/QualityService/app:/app/app
+      - ./services/QualityService/.env:/app/.env
     depends_on:
       quality-mongo:
         condition: service_healthy
       elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   # ==================== API Gateway ====================
@@ -238,4 +302,8 @@ volumes:
   quality_mongodata:
     driver: local
   esdata:
+    driver: local
+  redis_data:
+    driver: local
+  rabbitmq_data:
     driver: local

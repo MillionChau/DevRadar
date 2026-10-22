@@ -62,6 +62,12 @@ builder.Services.AddCors(options =>
         .AllowAnyHeader()
         .AllowAnyMethod()
         .AllowCredentials());
+
+    options.AddDefaultPolicy(policy => policy
+        .WithOrigins("http://localhost:3000", "http://localhost:5173")
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials());
 });
 
 // ===== Controllers (cho health endpoint của chính gateway) =====

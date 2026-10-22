@@ -19,70 +19,45 @@ interface ManagedUser {
   joinedDate: string;
 }
 
-const MOCK_USERS: ManagedUser[] = [
-  {
-    id: 'u-101',
-    userName: 'alex_turner',
-    displayName: 'Alex Turner',
-    email: 'alex.turner@cloudpulse.io',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces',
-    reputationPoints: 1420,
-    role: 'Member',
-    isBanned: false,
-    joinedDate: 'Jan 2026'
-  },
-  {
-    id: 'u-102',
-    userName: 'sarah_j',
-    displayName: 'Sarah Jenkins',
-    email: 'sarah.j@datadrive.com',
-    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=faces',
-    reputationPoints: 3450,
-    role: 'Moderator',
-    isBanned: false,
-    joinedDate: 'Nov 2025'
-  },
-  {
-    id: 'u-103',
-    userName: 'chen_weiliang',
-    displayName: 'Wei-Liang Chen',
-    email: 'wlchen@neotech.tw',
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=faces',
-    reputationPoints: 2890,
-    role: 'Member',
-    isBanned: false,
-    joinedDate: 'Dec 2025'
-  },
-  {
-    id: 'u-104',
-    userName: 'marcus_k',
-    displayName: 'Marcus Kowalski',
-    email: 'marcus.k@orbitmesh.io',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=faces',
-    reputationPoints: 2180,
-    role: 'Member',
-    isBanned: false,
-    joinedDate: 'Jan 2026'
-  },
-  {
-    id: 'u-105',
-    userName: 'spam_bot99',
-    displayName: 'Crypto Promotion Bot',
-    email: 'bot99@spamdomain.xyz',
-    avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=faces',
-    reputationPoints: -15,
-    role: 'Guest',
-    isBanned: true,
-    joinedDate: 'Mar 2026'
-  }
-];
+import { adminApi } from '../../api';
+import { recordActivity } from '../../utils/activityLogger';
 
 export const AdminUsers: React.FC = () => {
-  const [users, setUsers] = useState<ManagedUser[]>(MOCK_USERS);
+  const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'All' | UserRole>('All');
   const [selectedUser, setSelectedUser] = useState<ManagedUser | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  React.useEffect(() => {
+    setIsLoading(true);
+    adminApi
+      .getUsers(1, 50, searchQuery)
+      .then((data: any) => {
+        const raw = Array.isArray(data) ? data : data?.items || data?.data || [];
+        if (Array.isArray(raw)) {
+          const live: ManagedUser[] = raw.map((u: any) => ({
+            id: u.id,
+            userName: u.userName || 'user',
+            displayName: u.fullName || u.displayName || u.userName || 'DevRadar Member',
+            email: u.email || 'user@devradar.io',
+            avatarUrl: u.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100',
+            reputationPoints: u.reputationPoints ?? 1200,
+            role: (Array.isArray(u.roles) && u.roles.length > 0 ? u.roles[0] : (u.role || 'Member')) as UserRole,
+            isBanned: u.status === 2, // 2 = Locked/Banned
+            joinedDate: u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : 'Mới tham gia',
+          }));
+          setUsers(live);
+        }
+      })
+      .catch((err) => {
+        console.error('Could not load users from IdentityService:', err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [searchQuery]);
 
   const filteredUsers = users.filter(user => {
     const matchesSearch =
@@ -93,16 +68,72 @@ export const AdminUsers: React.FC = () => {
     return matchesSearch && matchesRole;
   });
 
-  const handleToggleBan = (userId: string) => {
+  const handleToggleBan = async (user: ManagedUser) => {
+    const nextBanned = !user.isBanned;
     setUsers(prev =>
-      prev.map(u => (u.id === userId ? { ...u, isBanned: !u.isBanned } : u))
+      prev.map(u => (u.id === user.id ? { ...u, isBanned: nextBanned } : u))
     );
+
+    try {
+      if (nextBanned) {
+        await adminApi.lockUser(user.id);
+      } else {
+        await adminApi.unlockUser(user.id);
+      }
+
+      recordActivity({
+        action: nextBanned ? 'USER_LOCK' : 'USER_UNLOCK',
+        action_label: nextBanned ? `Khóa tài khoản thành viên @${user.userName}` : `Mở khóa tài khoản thành viên @${user.userName}`,
+        category: 'SECURITY',
+        target_type: 'USER',
+        target_name: `@${user.userName} (${user.displayName || user.email})`,
+        target_id: user.id,
+        status: 'SUCCESS',
+        details: { previous_state: user.isBanned, new_state: nextBanned, role: user.role }
+      });
+    } catch (err) {
+      console.warn('Could not update user lock status on server:', err);
+      setUsers(prev =>
+        prev.map(u => (u.id === user.id ? { ...u, isBanned: user.isBanned } : u))
+      );
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    const targetUser = users.find(u => u.id === userId);
+    if (!confirm('Bạn có chắc chắn muốn xóa tài khoản người dùng này khỏi hệ thống?')) return;
+    setUsers(prev => prev.filter(u => u.id !== userId));
+    try {
+      await adminApi.deleteUser(userId);
+      recordActivity({
+        action: 'USER_DELETE',
+        action_label: `Xóa tài khoản người dùng @${targetUser?.userName || userId}`,
+        category: 'SECURITY',
+        target_type: 'USER',
+        target_name: `@${targetUser?.userName || userId}`,
+        target_id: userId,
+        status: 'SUCCESS'
+      });
+    } catch (err) {
+      console.warn('Could not delete user on server:', err);
+    }
   };
 
   const handleRoleChange = (userId: string, newRole: UserRole) => {
+    const targetUser = users.find(u => u.id === userId);
     setUsers(prev =>
       prev.map(u => (u.id === userId ? { ...u, role: newRole } : u))
     );
+    recordActivity({
+      action: 'USER_ROLE_CHANGE',
+      action_label: `Thay đổi quyền người dùng @${targetUser?.userName || userId} sang ${newRole}`,
+      category: 'SECURITY',
+      target_type: 'USER',
+      target_name: `@${targetUser?.userName || userId}`,
+      target_id: userId,
+      status: 'SUCCESS',
+      details: { previous_role: targetUser?.role, new_role: newRole }
+    });
     setIsEditModalOpen(false);
   };
 
@@ -166,7 +197,27 @@ export const AdminUsers: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-border/60">
-            {filteredUsers.map(u => (
+            {isLoading ? (
+              <tr>
+                <td colSpan={6} className="py-12 text-center text-text-muted">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-6 h-6 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs">Đang tải danh sách tài khoản từ cơ sở dữ liệu Identity...</span>
+                  </div>
+                </td>
+              </tr>
+            ) : filteredUsers.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-12 text-center text-text-muted">
+                  <div className="flex flex-col items-center gap-2">
+                    <AppIcon name="Users" size={32} className="text-text-subtle" />
+                    <span className="text-sm font-medium text-text-main">Không tìm thấy tài khoản người dùng</span>
+                    <span className="text-xs text-text-subtle">Thử điều chỉnh từ khóa tìm kiếm hoặc bộ lọc vai trò.</span>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              filteredUsers.map(u => (
               <tr key={u.id} className="hover:bg-surface-elevated/40 transition-colors">
                 <td className="py-3 px-4">
                   <div className="flex items-center gap-3">
@@ -219,14 +270,22 @@ export const AdminUsers: React.FC = () => {
                       variant={u.isBanned ? 'outline' : 'danger'}
                       size="sm"
                       icon={u.isBanned ? 'Unlock' : 'Ban'}
-                      onClick={() => handleToggleBan(u.id)}
+                      onClick={() => handleToggleBan(u)}
                     >
                       {u.isBanned ? 'Unban' : 'Ban'}
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon="Trash2"
+                      className="text-status-danger hover:bg-status-danger/10"
+                      onClick={() => handleDeleteUser(u.id)}
+                      title="Delete User"
+                    />
                   </div>
                 </td>
               </tr>
-            ))}
+            )))}
           </tbody>
         </table>
       </Card>

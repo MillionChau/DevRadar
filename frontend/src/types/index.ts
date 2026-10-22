@@ -74,6 +74,7 @@ export interface Post {
   isLiked?: boolean;
   isBookmarked?: boolean;
   status?: 'Published' | 'PendingReview' | 'Draft' | 'Hidden';
+  isApproved?: number;
   toxicityScore?: number;
   qualityScore?: number;
   createdAt: string;
@@ -197,3 +198,56 @@ export interface CrawlerJob {
   startedAt: string;
   completedAt?: string;
 }
+
+// User Reputation, Tier Hierarchy & Trust & Safety (CommunityService - SPEC-REP)
+export interface UserReputation {
+  userId: string;
+  username: string;
+  avatarUrl?: string;
+  permanentReputationPoints: number;
+  trustSafetyScore: number;
+  currentTierLevel: number;
+  tierTitle: string;
+  tierBadge: string;
+  nextTierTitle?: string;
+  nextTierRequiredPoints?: number;
+  pointsToNextTier?: number;
+  progressPercentage: number;
+  weeklyContributionScore: number;
+  monthlyContributionScore: number;
+  isSanctioned: boolean;
+  sanctionLevel: number;
+  sanctionReason?: string;
+  sanctionExpiresAt?: string;
+  canPost: boolean;
+  canComment: boolean;
+  isSandboxModerated: boolean;
+  privileges: string[];
+}
+
+export interface ReputationTransaction {
+  id: string;
+  actionType: string;
+  actionDescription: string;
+  pointsChanged: number;
+  tssChanged: number;
+  sourceId?: string;
+  reason?: string;
+  createdAt: string;
+}
+
+export interface LeaderboardUser {
+  rank: number;
+  userId: string;
+  username: string;
+  avatarUrl?: string;
+  score: number;
+  postCount: number;
+  commentCount: number;
+  likeCount: number;
+  tierLevel?: number;
+  tierTitle?: string;
+  tierBadge?: string;
+  badges: string[];
+}
+

@@ -1,6 +1,11 @@
 import React from 'react';
 import { RadarMetrics } from '../../types';
 
+export interface RadarAxis {
+  key: keyof RadarMetrics;
+  label: string;
+}
+
 export interface RadarChartProps {
   metrics: RadarMetrics;
   compareMetrics?: RadarMetrics;
@@ -8,6 +13,7 @@ export interface RadarChartProps {
   labelA?: string;
   labelB?: string;
   showLabels?: boolean;
+  customAxes?: RadarAxis[];
 }
 
 export const RadarChart: React.FC<RadarChartProps> = ({
@@ -17,17 +23,20 @@ export const RadarChart: React.FC<RadarChartProps> = ({
   labelA = 'Công nghệ A',
   labelB = 'Công nghệ B',
   showLabels = true,
+  customAxes,
 }) => {
   const center = size / 2;
   const radius = size * 0.38;
 
-  const axes = [
+  const defaultAxes: RadarAxis[] = [
     { key: 'codeQuality' as const, label: 'Code Quality' },
     { key: 'activityFrequency' as const, label: 'Activity' },
     { key: 'communityContribution' as const, label: 'Community' },
     { key: 'projectReputation' as const, label: 'Reputation' },
     { key: 'techStackDepth' as const, label: 'Tech Stack' },
   ];
+
+  const axes = customAxes && customAxes.length === 5 ? customAxes : defaultAxes;
 
   const getCoordinates = (value: number, index: number, maxRadius: number) => {
     // 5 axes: angles: -90deg, -18deg, 54deg, 126deg, 198deg
