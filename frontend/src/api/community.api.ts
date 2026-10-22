@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { Post, Comment, TechZone } from '../types';
+import { Post, Comment, TechZone, UserReputation, ReputationTransaction, LeaderboardUser } from '../types';
 
 export interface GetPostsParams {
   pageNumber?: number;
@@ -159,8 +159,27 @@ export const communityApi = {
   },
 
   /** Bảng xếp hạng lập trình viên uy tín (FR-29, UC-45, UC-46) */
-  getLeaderboard: async (top = 10, period = 'all'): Promise<any[]> => {
+  getLeaderboard: async (top = 10, period = 'all'): Promise<LeaderboardUser[]> => {
     const res = await apiClient.get<any>('/community/api/Leaderboard', { params: { top, period } });
+    const raw = res.data || res;
+    return Array.isArray(raw) ? raw : raw.items || [];
+  },
+
+  /** Lấy thông tin điểm uy tín, cấp bậc và điểm tín nhiệm TSS của bản thân (FR-REP-01) */
+  getMyReputation: async (): Promise<UserReputation> => {
+    const res = await apiClient.get<any>('/community/api/Reputation/me');
+    return res.data || res;
+  },
+
+  /** Lấy thông tin điểm uy tín công khai của một người dùng */
+  getUserReputation: async (userId: string): Promise<UserReputation> => {
+    const res = await apiClient.get<any>(`/community/api/Reputation/user/${userId}`);
+    return res.data || res;
+  },
+
+  /** Lấy lịch sử biến động điểm uy tín và TSS (Audit Log) */
+  getMyReputationHistory: async (limit = 50): Promise<ReputationTransaction[]> => {
+    const res = await apiClient.get<any>('/community/api/Reputation/history', { params: { limit } });
     const raw = res.data || res;
     return Array.isArray(raw) ? raw : raw.items || [];
   },

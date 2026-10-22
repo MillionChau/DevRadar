@@ -3,9 +3,12 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
+import { Tooltip } from '../../components/common/Tooltip';
 import { AppIcon } from '../../components/common/Icon';
+import MarkdownRenderer from '../../components/common/MarkdownRenderer';
 import { useAuth } from '../../context/AuthContext';
 import { analyticsApi } from '../../api';
+import { toast } from '../../context/ToastContext';
 
 interface ReportComment {
   id: string;
@@ -87,6 +90,11 @@ export const ReportDetail: React.FC = () => {
     if (!report) return;
     setIsLiking(true);
     const nextState = !hasLiked;
+    if (nextState) {
+      toast.success('Đã thích báo cáo phân tích!', 'Tương tác');
+    } else {
+      toast.info('Đã bỏ thích báo cáo.', 'Tương tác');
+    }
     try {
       const res = await analyticsApi.likeReport(report.id, nextState);
       setHasLiked(nextState);
@@ -103,6 +111,7 @@ export const ReportDetail: React.FC = () => {
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
     setCopiedLink(true);
+    toast.success('Đã sao chép liên kết báo cáo vào bộ nhớ tạm!', 'Chia sẻ');
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
@@ -119,9 +128,10 @@ export const ReportDetail: React.FC = () => {
         author_id: user?.id,
       });
       setCommentText('');
+      toast.success('Đã gửi bình luận thành công!');
       fetchComments(report.id);
     } catch (err: any) {
-      alert(`Lỗi khi đăng bình luận: ${err?.message || 'Vui lòng thử lại sau'}`);
+      toast.error(`Lỗi khi đăng bình luận: ${err?.message || 'Vui lòng thử lại sau'}`);
     } finally {
       setIsSubmittingComment(false);
     }
@@ -132,75 +142,10 @@ export const ReportDetail: React.FC = () => {
     try {
       await analyticsApi.deleteReportComment(report.id, commentId);
       setComments((prev) => prev.filter((c) => c.id !== commentId));
+      toast.success('Đã xóa bình luận thành công!');
     } catch (err: any) {
-      alert(`Lỗi khi xóa bình luận: ${err?.message || 'Không thể xóa'}`);
+      toast.error(`Lỗi khi xóa bình luận: ${err?.message || 'Không thể xóa'}`);
     }
-  };
-
-  // Simple Markdown Renderer for clean reading experience
-  const renderMarkdown = (content: string) => {
-    if (!content) return null;
-    const lines = content.split('\n');
-
-    return (
-      <div className="space-y-3 leading-relaxed text-text-main text-sm">
-        {lines.map((line, idx) => {
-          const trimmed = line.trim();
-
-          if (trimmed.startsWith('# ')) {
-            return (
-              <h1 key={idx} className="text-xl md:text-2xl font-bold text-text-main pt-4 pb-1 border-b border-surface-border">
-                {trimmed.replace('# ', '')}
-              </h1>
-            );
-          }
-          if (trimmed.startsWith('## ')) {
-            return (
-              <h2 key={idx} className="text-lg md:text-xl font-bold text-brand-secondary pt-3 pb-1">
-                {trimmed.replace('## ', '')}
-              </h2>
-            );
-          }
-          if (trimmed.startsWith('### ')) {
-            return (
-              <h3 key={idx} className="text-base font-semibold text-text-main pt-2">
-                {trimmed.replace('### ', '')}
-              </h3>
-            );
-          }
-          if (trimmed.startsWith('> ')) {
-            return (
-              <blockquote key={idx} className="p-3 my-2 border-l-4 border-brand-primary bg-surface-elevated/80 rounded-r-btn italic text-xs text-text-muted">
-                {trimmed.replace('> ', '')}
-              </blockquote>
-            );
-          }
-          if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-            return (
-              <li key={idx} className="ml-5 list-disc text-xs text-text-main py-0.5">
-                {trimmed.substring(2)}
-              </li>
-            );
-          }
-          if (trimmed.startsWith('```')) {
-            return (
-              <div key={idx} className="text-[10px] text-text-subtle font-mono uppercase px-1">
-                {trimmed}
-              </div>
-            );
-          }
-          if (!trimmed) {
-            return <div key={idx} className="h-1" />;
-          }
-
-          return (
-            <p key={idx} className="text-xs text-text-muted leading-relaxed">
-              {trimmed}
-            </p>
-          );
-        })}
-      </div>
-    );
   };
 
   if (isLoading) {
@@ -277,11 +222,18 @@ export const ReportDetail: React.FC = () => {
               icon="heart"
               disabled={isLiking}
               onClick={handleToggleLike}
+              tooltip={hasLiked ? 'Bỏ thích báo cáo' : 'Thích báo cáo phân tích này'}
             >
               {hasLiked ? 'Đã thích' : 'Yêu thích'} ({likesCount})
             </Button>
 
-            <Button variant="ghost" size="sm" icon="share" onClick={handleCopyLink}>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon="share"
+              onClick={handleCopyLink}
+              tooltip="Sao chép liên kết báo cáo"
+            >
               {copiedLink ? 'Đã sao chép!' : 'Chia sẻ'}
             </Button>
           </div>
@@ -301,9 +253,7 @@ export const ReportDetail: React.FC = () => {
 
       {/* Main Report Body */}
       <Card variant="default" padding="lg" className="border-surface-border/80">
-        <div className="prose prose-invert max-w-none">
-          {renderMarkdown(report.content_markdown)}
-        </div>
+        <MarkdownRenderer content={report.content_markdown} />
       </Card>
 
       {/* Bottom Action Bar */}
@@ -315,13 +265,19 @@ export const ReportDetail: React.FC = () => {
             size="sm"
             icon="heart"
             onClick={handleToggleLike}
+            tooltip={hasLiked ? 'Bỏ thích báo cáo' : 'Thích báo cáo phân tích này'}
           >
             {hasLiked ? 'Đã thích' : 'Thả tim'} ({likesCount})
           </Button>
         </div>
 
         <Link to="/analytics/reports">
-          <Button variant="ghost" size="sm" icon="arrowLeft">
+          <Button
+            variant="ghost"
+            size="sm"
+            icon="arrowLeft"
+            tooltip="Quay lại danh sách các báo cáo kỹ thuật"
+          >
             Tất cả báo cáo
           </Button>
         </Link>
@@ -367,6 +323,7 @@ export const ReportDetail: React.FC = () => {
                   type="submit"
                   icon="send"
                   disabled={isSubmittingComment || !commentText.trim()}
+                  tooltip="Gửi bình luận phản biện kỹ thuật"
                 >
                   {isSubmittingComment ? 'Đang gửi...' : 'Gửi bình luận'}
                 </Button>
@@ -421,14 +378,16 @@ export const ReportDetail: React.FC = () => {
                   </div>
 
                   {(user?.id === cmt.author_id || role === 'Admin') && (
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteComment(cmt.id)}
-                      className="text-text-subtle hover:text-status-danger text-[11px] transition-colors p-1"
-                      title="Xóa bình luận"
-                    >
-                      <AppIcon name="trash" size={13} />
-                    </button>
+                    <Tooltip content="Xóa bình luận này" position="left">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteComment(cmt.id)}
+                        className="text-text-subtle hover:text-status-danger text-[11px] transition-colors p-1 rounded hover:bg-status-danger/10"
+                        aria-label="Xóa bình luận"
+                      >
+                        <AppIcon name="trash" size={13} />
+                      </button>
+                    </Tooltip>
                   )}
                 </div>
 

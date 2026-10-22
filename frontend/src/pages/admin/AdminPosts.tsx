@@ -14,6 +14,7 @@ interface ManagedPost extends Post {
 
 import { adminApi } from '../../api';
 import { recordActivity } from '../../utils/activityLogger';
+import { toast } from '../../context/ToastContext';
 
 export const AdminPosts: React.FC = () => {
   const [posts, setPosts] = useState<ManagedPost[]>([]);
@@ -104,6 +105,11 @@ export const AdminPosts: React.FC = () => {
     setPosts(prev =>
       prev.map(p => (p.id === id ? { ...p, isHidden: nextState } : p))
     );
+    if (nextState) {
+      toast.warning('Đã ẩn bài viết khỏi bảng tin cộng đồng', 'Kiểm duyệt');
+    } else {
+      toast.success('Đã khôi phục bài viết lên bảng tin', 'Kiểm duyệt');
+    }
 
     try {
       if (nextState) {
@@ -140,11 +146,11 @@ export const AdminPosts: React.FC = () => {
         target_id: id,
         status: 'SUCCESS'
       });
-      alert(`Đã phân tích lại bài viết qua AI Quality & Toxicity Engine!`);
+      toast.success('Đã phân tích lại bài viết qua AI Quality & Toxicity Engine!', 'AI Moderation');
       fetchAdminPosts();
     } catch (err) {
       console.warn('Could not run AI re-check on server:', err);
-      alert(`Đã gửi yêu cầu tái phân tích AI cho bài viết ${id}.`);
+      toast.info(`Đã gửi yêu cầu tái phân tích AI cho bài viết ${id}.`, 'AI Moderation');
     }
   };
 
@@ -152,6 +158,7 @@ export const AdminPosts: React.FC = () => {
     const target = posts.find(p => p.id === id);
     if (!confirm('Bạn có chắc chắn muốn xóa bài viết này vĩnh viễn khỏi cộng đồng?')) return;
     setPosts(prev => prev.filter(p => p.id !== id));
+    toast.success('Đã xóa vĩnh viễn bài viết khỏi cộng đồng.', 'Xóa bài viết');
     try {
       await adminApi.deletePost(id);
       recordActivity({
@@ -320,20 +327,21 @@ export const AdminPosts: React.FC = () => {
                       size="sm"
                       icon="Pin"
                       onClick={() => handleTogglePin(p.id)}
-                      title={p.isPinned ? 'Unpin' : 'Pin to top'}
+                      tooltip={p.isPinned ? 'Bỏ ghim bài viết' : 'Ghim bài viết lên đầu'}
                     />
                     <Button
                       variant="ghost"
                       size="sm"
                       icon="Sparkles"
                       onClick={() => handleRecheckAI(p.id)}
-                      title="Re-run AI Analysis"
+                      tooltip="Tái phân tích chất lượng & độc hại với AI Engine"
                     />
                     <Button
                       variant={p.isHidden ? 'outline' : 'danger'}
                       size="sm"
                       icon={p.isHidden ? 'Eye' : 'EyeOff'}
                       onClick={() => handleToggleHide(p.id)}
+                      tooltip={p.isHidden ? 'Hiển thị lại bài viết trên bảng tin' : 'Ẩn bài viết khỏi cộng đồng'}
                     >
                       {p.isHidden ? 'Show' : 'Hide'}
                     </Button>
@@ -343,7 +351,7 @@ export const AdminPosts: React.FC = () => {
                       icon="Trash2"
                       className="text-status-danger hover:bg-status-danger/10"
                       onClick={() => handleDeletePost(p.id)}
-                      title="Delete Post"
+                      tooltip="Xóa vĩnh viễn bài viết"
                     />
                   </div>
                 </td>

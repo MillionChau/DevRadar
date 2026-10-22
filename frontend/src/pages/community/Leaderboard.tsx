@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import { AppIcon } from '../../components/common/Icon';
-
 import { communityApi } from '../../api';
 
-interface LeaderboardUser {
+interface LeaderboardUserItem {
   rank: number;
   displayName: string;
   userName: string;
@@ -13,21 +12,25 @@ interface LeaderboardUser {
   reputationPoints: number;
   postsCount: number;
   starsCount: number;
+  commentCount: number;
   topBadge: string;
+  tierBadge?: string;
+  tierTitle?: string;
 }
 
 export const Leaderboard: React.FC = () => {
   const [period, setPeriod] = useState<'weekly' | 'monthly' | 'allTime'>('monthly');
-  const [rankings, setRankings] = useState<LeaderboardUser[]>([]);
+  const [rankings, setRankings] = useState<LeaderboardUserItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   React.useEffect(() => {
     setIsLoading(true);
+    const apiPeriod = period === 'allTime' ? 'all' : period;
     communityApi
-      .getLeaderboard(10, period)
+      .getLeaderboard(15, apiPeriod)
       .then((data: any[]) => {
         if (Array.isArray(data)) {
-          const mapped: LeaderboardUser[] = data.map((u, idx) => ({
+          const mapped: LeaderboardUserItem[] = data.map((u, idx) => ({
             rank: u.rank ?? (idx + 1),
             displayName: u.displayName || u.fullName || u.username || u.userName || 'Lập trình viên DevRadar',
             userName: u.username || u.userName || 'developer',
@@ -35,7 +38,10 @@ export const Leaderboard: React.FC = () => {
             reputationPoints: u.score ?? u.reputationScore ?? 0,
             postsCount: u.postCount ?? u.postsCount ?? 0,
             starsCount: u.likeCount ?? u.likesCount ?? 0,
-            topBadge: Array.isArray(u.badges) && u.badges.length > 0 ? u.badges[0] : (u.badge || 'Top Contributor'),
+            commentCount: u.commentCount ?? 0,
+            topBadge: u.tierTitle || (Array.isArray(u.badges) && u.badges.length > 0 ? u.badges[0] : 'Top Contributor'),
+            tierBadge: u.tierBadge || '🌱 Tân thủ',
+            tierTitle: u.tierTitle || 'Code Initiate',
           }));
           setRankings(mapped);
         }
@@ -108,8 +114,10 @@ export const Leaderboard: React.FC = () => {
                   className="w-16 h-16 rounded-full border-2 border-slate-400 object-cover"
                 />
                 <h3 className="text-sm font-bold text-text-main">{topPodium[1].displayName}</h3>
-                <Badge variant="reputation">⚡ {topPodium[1].reputationPoints} Rep</Badge>
-                <span className="text-xs text-text-subtle">{topPodium[1].topBadge}</span>
+                <Badge variant="reputation">⚡ {topPodium[1].reputationPoints.toLocaleString()} Điểm</Badge>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-brand-secondary">{topPodium[1].tierBadge}</span>
+                </div>
               </Card>
 
               {/* Top 1 Podium Champion */}
@@ -125,9 +133,11 @@ export const Leaderboard: React.FC = () => {
                 />
                 <h3 className="text-base font-bold text-text-main">{topPodium[0].displayName}</h3>
                 <Badge variant="reputation" className="text-sm py-1 px-3">
-                  ⚡ {topPodium[0].reputationPoints} Rep
+                  ⚡ {topPodium[0].reputationPoints.toLocaleString()} Điểm
                 </Badge>
-                <span className="text-xs text-brand-secondary font-semibold">{topPodium[0].topBadge}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-amber-400">{topPodium[0].tierBadge}</span>
+                </div>
               </Card>
 
               {/* Top 3 */}
@@ -141,8 +151,10 @@ export const Leaderboard: React.FC = () => {
                   className="w-16 h-16 rounded-full border-2 border-amber-700/60 object-cover"
                 />
                 <h3 className="text-sm font-bold text-text-main">{topPodium[2].displayName}</h3>
-                <Badge variant="reputation">⚡ {topPodium[2].reputationPoints} Rep</Badge>
-                <span className="text-xs text-text-subtle">{topPodium[2].topBadge}</span>
+                <Badge variant="reputation">⚡ {topPodium[2].reputationPoints.toLocaleString()} Điểm</Badge>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-brand-secondary">{topPodium[2].tierBadge}</span>
+                </div>
               </Card>
             </div>
           )}
@@ -158,10 +170,11 @@ export const Leaderboard: React.FC = () => {
               <tr>
                 <th className="py-3 px-4 w-16">Hạng</th>
                 <th className="py-3 px-4">Lập trình viên</th>
-                <th className="py-3 px-4">Điểm Uy tín</th>
+                <th className="py-3 px-4">Cấp bậc</th>
+                <th className="py-3 px-4">Điểm Đóng góp</th>
                 <th className="py-3 px-4">Bài viết</th>
+                <th className="py-3 px-4">Bình luận</th>
                 <th className="py-3 px-4">Lượt Star</th>
-                <th className="py-3 px-4">Huy hiệu năng lực</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-border/60">
@@ -179,14 +192,15 @@ export const Leaderboard: React.FC = () => {
                       </div>
                     </div>
                   </td>
+                  <td className="py-3.5 px-4">
+                    <Badge variant="tech" size="sm">{u.tierBadge || u.topBadge}</Badge>
+                  </td>
                   <td className="py-3.5 px-4 font-mono font-semibold text-brand-secondary">
                     ⚡ {u.reputationPoints.toLocaleString()}
                   </td>
                   <td className="py-3.5 px-4 text-text-muted">{u.postsCount} bài</td>
+                  <td className="py-3.5 px-4 text-text-muted">{u.commentCount} cmt</td>
                   <td className="py-3.5 px-4 text-text-muted">★ {u.starsCount}</td>
-                  <td className="py-3.5 px-4">
-                    <Badge variant="tech" size="sm">{u.topBadge}</Badge>
-                  </td>
                 </tr>
               ))}
             </tbody>

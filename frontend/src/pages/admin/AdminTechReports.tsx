@@ -5,6 +5,7 @@ import Badge from '../../components/common/Badge';
 import Modal from '../../components/common/Modal';
 import { AppIcon } from '../../components/common/Icon';
 import { analyticsApi } from '../../api';
+import { toast } from '../../context/ToastContext';
 
 interface TechReportItem {
   id: string;
@@ -94,7 +95,7 @@ export const AdminTechReports: React.FC = () => {
 
   const handleGenerateAI = async () => {
     if (!aiTopic.trim()) {
-      alert('Vui lòng nhập hoặc chọn một chủ đề phân tích');
+      toast.warning('Vui lòng nhập hoặc chọn một chủ đề phân tích');
       return;
     }
     setIsGeneratingAI(true);
@@ -107,12 +108,12 @@ export const AdminTechReports: React.FC = () => {
         save_to_db: true,
         include_live_metrics: true,
       });
-      alert(`Đã khởi tạo thành công báo cáo AI: "${res.data?.title || aiTopic}"`);
+      toast.success(`Đã khởi tạo thành công báo cáo AI: "${res.data?.title || aiTopic}"`, 'AI Report Generator');
       setIsAIModalOpen(false);
       setAiTopic('');
       fetchReports();
     } catch (err: any) {
-      alert(`Lỗi khi tạo báo cáo AI: ${err?.message || 'Không thể kết nối dịch vụ AI'}`);
+      toast.error(`Lỗi khi tạo báo cáo AI: ${err?.message || 'Không thể kết nối dịch vụ AI'}`);
     } finally {
       setIsGeneratingAI(false);
     }
@@ -122,9 +123,10 @@ export const AdminTechReports: React.FC = () => {
     if (!window.confirm('Bạn có chắc muốn duyệt xuất bản báo cáo này ra cộng đồng?')) return;
     try {
       await analyticsApi.publishAdminReport(id);
+      toast.success('Đã duyệt xuất bản báo cáo ra cộng đồng!');
       fetchReports();
     } catch (err: any) {
-      alert(`Lỗi: ${err?.message || 'Không thể xuất bản báo cáo'}`);
+      toast.error(`Lỗi: ${err?.message || 'Không thể xuất bản báo cáo'}`);
     }
   };
 
@@ -132,9 +134,10 @@ export const AdminTechReports: React.FC = () => {
     if (!window.confirm('Bạn có chắc muốn ẩn báo cáo này khỏi giao diện người dùng?')) return;
     try {
       await analyticsApi.hideAdminReport(id);
+      toast.warning('Đã ẩn báo cáo khỏi giao diện người dùng');
       fetchReports();
     } catch (err: any) {
-      alert(`Lỗi: ${err?.message || 'Không thể ẩn báo cáo'}`);
+      toast.error(`Lỗi: ${err?.message || 'Không thể ẩn báo cáo'}`);
     }
   };
 
@@ -142,9 +145,10 @@ export const AdminTechReports: React.FC = () => {
     if (!window.confirm(`Xác nhận xóa vĩnh viễn báo cáo: "${title}"?`)) return;
     try {
       await analyticsApi.deleteAdminReport(id);
+      toast.success('Đã xóa vĩnh viễn báo cáo!');
       fetchReports();
     } catch (err: any) {
-      alert(`Lỗi: ${err?.message || 'Không thể xóa báo cáo'}`);
+      toast.error(`Lỗi: ${err?.message || 'Không thể xóa báo cáo'}`);
     }
   };
 
@@ -179,7 +183,7 @@ export const AdminTechReports: React.FC = () => {
   const handleSaveReport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim() || !formData.content_markdown.trim()) {
-      alert('Vui lòng điền đầy đủ tiêu đề và nội dung báo cáo.');
+      toast.warning('Vui lòng điền đầy đủ tiêu đề và nội dung báo cáo.');
       return;
     }
 
@@ -196,15 +200,15 @@ export const AdminTechReports: React.FC = () => {
     try {
       if (editingReport && editingReport.id) {
         await analyticsApi.updateAdminReport(editingReport.id, payload);
-        alert('Cập nhật báo cáo thành công!');
+        toast.success('Cập nhật báo cáo thành công!');
       } else {
         await analyticsApi.createAdminReport(payload);
-        alert('Tạo mới báo cáo thành công!');
+        toast.success('Tạo mới báo cáo thành công!');
       }
       setIsEditModalOpen(false);
       fetchReports();
     } catch (err: any) {
-      alert(`Lỗi khi lưu báo cáo: ${err?.message || 'Thao tác không thành công'}`);
+      toast.error(`Lỗi khi lưu báo cáo: ${err?.message || 'Thao tác không thành công'}`);
     }
   };
 

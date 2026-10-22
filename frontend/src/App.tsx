@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 import { Layout } from './components/layout/Layout';
 
 // Auth Pages (SCR-01, SCR-02, SCR-03)
@@ -48,8 +49,9 @@ import { ProtectedRoute } from './components/common/RouteGuard';
 export const App: React.FC = () => {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
+      <ToastProvider>
+        <BrowserRouter>
+          <Routes>
           {/* Main App Shell Layout */}
           <Route element={<Layout />}>
             {/* Public Community & Analytics Routes */}
@@ -115,7 +117,8 @@ export const App: React.FC = () => {
           </Route>
         </Routes>
       </BrowserRouter>
-    </AuthProvider>
+    </ToastProvider>
+  </AuthProvider>
   );
 };
 

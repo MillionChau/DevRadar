@@ -5,6 +5,7 @@ import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import { AppIcon } from '../../components/common/Icon';
 import EmptyState from '../../components/common/EmptyState';
+import { stripMarkdown } from '../../components/common/MarkdownRenderer';
 import { Post } from '../../types';
 import { communityApi, analyticsApi } from '../../api';
 
@@ -235,7 +236,7 @@ export const Newsfeed: React.FC = () => {
                 </h2>
               </Link>
               <p className="text-xs text-text-muted line-clamp-2 leading-relaxed">
-                {post.summary}
+                {stripMarkdown(post.summary || post.content || '')}
               </p>
 
               {/* Tag Chips */}

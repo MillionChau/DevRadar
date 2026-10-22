@@ -5,6 +5,7 @@ import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import { AppIcon } from '../../components/common/Icon';
 import { analyticsApi } from '../../api';
+import { toast } from '../../context/ToastContext';
 
 interface WhitepaperReport {
   id: string;
@@ -129,6 +130,7 @@ export const AnalyticsReports: React.FC = () => {
                   size="sm"
                   icon="bookOpen"
                   onClick={() => navigate(`/analytics/reports/${rep.id}`)}
+                  tooltip="Đọc chi tiết và tham gia thảo luận"
                 >
                   Đọc & bình luận
                 </Button>
@@ -136,8 +138,8 @@ export const AnalyticsReports: React.FC = () => {
                   variant="ghost"
                   size="sm"
                   icon="download"
-                  onClick={() => alert(`Đang tải báo cáo PDF: ${rep.title}`)}
-                  title="Tải bản in PDF"
+                  onClick={() => toast.info(`Đang tạo và tải bản in PDF: ${rep.title}`, 'Tải báo cáo')}
+                  tooltip="Tải bản in PDF của báo cáo"
                 />
               </div>
             </div>

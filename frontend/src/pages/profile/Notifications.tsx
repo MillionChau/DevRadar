@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
 import { EmptyState } from '../../components/common/EmptyState';
 import { AppIcon } from '../../components/common/Icon';
@@ -7,6 +7,7 @@ import { NotificationItem } from '../../types';
 import { notificationApi } from '../../api';
 
 export const Notifications: React.FC = () => {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [filter, setFilter] = useState<'all' | 'unread' | 'mentions' | 'system'>('all');
@@ -15,7 +16,17 @@ export const Notifications: React.FC = () => {
     setIsLoading(true);
     try {
       const res = await notificationApi.getMyNotifications(1, 50);
-      setNotifications(res.items || []);
+      const items = res.items || [];
+      const hasUnread = items.some(n => !n.isRead && !n.read);
+
+      // Facebook behavior: Tự động đánh dấu tất cả đã đọc khi người dùng mở trang thông báo
+      if (hasUnread) {
+        setNotifications(items.map(n => ({ ...n, isRead: true, read: true })));
+        notificationApi.markAllAsRead().catch(() => {});
+        window.dispatchEvent(new CustomEvent('devradar:notifications-read'));
+      } else {
+        setNotifications(items);
+      }
     } catch (err) {
       console.warn('Could not fetch notifications from backend:', err);
       setNotifications([]);
@@ -32,6 +43,7 @@ export const Notifications: React.FC = () => {
 
   const handleMarkAllRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true, read: true })));
+    window.dispatchEvent(new CustomEvent('devradar:notifications-read'));
     try {
       await notificationApi.markAllAsRead();
     } catch (err) {
@@ -39,7 +51,8 @@ export const Notifications: React.FC = () => {
     }
   };
 
-  const handleToggleRead = async (id: string) => {
+  const handleToggleRead = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     const targetNotif = notifications.find(n => n.id === id);
     const wasRead = targetNotif ? (targetNotif.isRead || targetNotif.read) : false;
 
@@ -60,6 +73,19 @@ export const Notifications: React.FC = () => {
         console.warn('Error marking notification as read:', err);
       }
     }
+  };
+
+  const handleItemClick = (notif: NotificationItem, e: React.MouseEvent) => {
+    // Nếu bấm vào nút mark as read riêng lẻ thì không navigate
+    if ((e.target as HTMLElement).closest('button')) {
+      return;
+    }
+
+    if (!notif.isRead && !notif.read) {
+      notificationApi.markAsRead(notif.id).catch(() => {});
+    }
+    const target = notif.targetUrl || notif.link || '/notifications';
+    navigate(target);
   };
 
   const filtered = notifications.filter(n => {
@@ -190,10 +216,11 @@ export const Notifications: React.FC = () => {
             return (
               <div
                 key={notif.id}
-                className={`p-4 rounded-xl border transition-all flex items-start gap-4 ${
+                onClick={(e) => handleItemClick(notif, e)}
+                className={`p-4 rounded-xl border transition-all flex items-start gap-4 cursor-pointer ${
                   isRead
-                    ? 'bg-surface-card border-surface-border/60 hover:border-surface-border'
-                    : 'bg-surface-elevated/90 border-brand-primary/30 shadow-md shadow-brand-primary/5'
+                    ? 'bg-surface-card border-surface-border/60 hover:border-surface-border hover:bg-surface-elevated/40'
+                    : 'bg-surface-elevated/90 border-brand-primary/30 shadow-md shadow-brand-primary/5 hover:bg-surface-elevated'
                 }`}
               >
                 {/* Avatar or Icon container */}
@@ -217,12 +244,9 @@ export const Notifications: React.FC = () => {
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
-                    <Link
-                      to={target}
-                      className="text-sm font-semibold text-text-main hover:text-brand-primary transition-colors line-clamp-1"
-                    >
+                    <span className="text-sm font-semibold text-text-main hover:text-brand-primary transition-colors line-clamp-1">
                       {notif.title}
-                    </Link>
+                    </span>
                     <span className="text-xs text-text-subtle whitespace-nowrap">
                       {notif.createdAt}
                     </span>
@@ -231,18 +255,16 @@ export const Notifications: React.FC = () => {
                     {notif.message}
                   </p>
                   <div className="flex items-center gap-4 mt-2">
-                    <Link
-                      to={target}
-                      className="text-xs text-brand-secondary hover:underline font-medium flex items-center gap-1"
-                    >
-                      View details
+                    <span className="text-xs text-brand-secondary hover:underline font-medium flex items-center gap-1">
+                      Xem chi tiết
                       <AppIcon name="ExternalLink" size={12} />
-                    </Link>
+                    </span>
                     <button
-                      onClick={() => handleToggleRead(notif.id)}
+                      type="button"
+                      onClick={(e) => handleToggleRead(notif.id, e)}
                       className="text-xs text-text-subtle hover:text-text-muted"
                     >
-                      {isRead ? 'Mark as unread' : 'Mark as read'}
+                      {isRead ? 'Đánh dấu chưa đọc' : 'Đánh dấu đã đọc'}
                     </button>
                   </div>
                 </div>

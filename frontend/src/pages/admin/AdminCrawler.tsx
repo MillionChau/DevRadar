@@ -5,6 +5,7 @@ import { Input } from '../../components/common/Input';
 import { Modal } from '../../components/common/Modal';
 import { AppIcon } from '../../components/common/Icon';
 import { adminApi } from '../../api';
+import { toast } from '../../context/ToastContext';
 
 interface CrawlerJob {
   id: string;
@@ -295,12 +296,14 @@ export const AdminCrawler: React.FC = () => {
     try {
       await adminApi.triggerCrawlNow(owner, repo);
       setRepoInput('');
+      toast.success(`Đã gửi yêu cầu thu thập dữ liệu cho repository: ${owner}/${repo}`, 'Crawler Engine');
       setTimeout(() => {
         fetchCrawlHistory();
         fetchSystemOverview();
       }, 1500);
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Failed to trigger crawler on backend:', err);
+      toast.error(err?.message || 'Không thể kích hoạt thu thập dữ liệu', 'Lỗi Crawler');
     } finally {
       setIsTriggering(false);
     }
@@ -311,14 +314,14 @@ export const AdminCrawler: React.FC = () => {
     setIsSyncingOld(true);
     try {
       await adminApi.triggerCrawlNow();
-      alert('Đã gửi lệnh kích hoạt đồng bộ dữ liệu & huấn luyện lại Core Models đến Crawler Service!');
+      toast.success('Đã gửi lệnh kích hoạt đồng bộ dữ liệu & huấn luyện lại Core Models đến Crawler Service!', 'Crawler Engine');
       setTimeout(() => {
         fetchCrawlHistory();
         fetchSystemOverview();
       }, 2000);
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Error triggering batch sync:', err);
-      alert('Đã kích hoạt đồng bộ batch repositories cũ theo LRU queue!');
+      toast.info('Đã kích hoạt đồng bộ batch repositories cũ theo LRU queue!', 'Crawler Engine');
     } finally {
       setIsSyncingOld(false);
     }

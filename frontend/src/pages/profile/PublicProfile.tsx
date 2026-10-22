@@ -6,13 +6,14 @@ import Badge from '../../components/common/Badge';
 import { AppIcon } from '../../components/common/Icon';
 import RadarChart from '../../components/common/RadarChart';
 import EmptyState from '../../components/common/EmptyState';
-import { RadarMetrics, Post } from '../../types';
+import { RadarMetrics, Post, UserReputation } from '../../types';
 import { authApi, analyticsApi, communityApi } from '../../api';
 
 export const PublicProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [isFollowing, setIsFollowing] = useState(false);
   const [profile, setProfile] = useState<any>(null);
+  const [reputation, setReputation] = useState<UserReputation | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [authorPosts, setAuthorPosts] = useState<Post[]>([]);
   const [metrics, setMetrics] = useState<RadarMetrics>({
@@ -64,6 +65,16 @@ export const PublicProfile: React.FC = () => {
       .catch(() => {
         setAuthorPosts([]);
       });
+
+    // Tải thông tin cấp bậc & điểm uy tín
+    communityApi
+      .getUserReputation(id)
+      .then((repData) => {
+        setReputation(repData);
+      })
+      .catch(() => {
+        setReputation(null);
+      });
   }, [id]);
 
   if (isLoading) {
@@ -105,9 +116,12 @@ export const PublicProfile: React.FC = () => {
               className="w-24 h-24 rounded-full border-4 border-surface-card object-cover shadow-xl bg-surface-card"
             />
             <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 flex-wrap">
                 <h1 className="text-xl font-bold text-text-main">{profile.fullName || profile.userName}</h1>
-                <Badge variant="reputation" size="sm">⚡ {profile.reputationPoints || 1000} Rep</Badge>
+                <Badge variant="reputation" size="sm">⚡ {reputation?.permanentReputationPoints ?? profile.reputationPoints ?? 1000} PRP</Badge>
+                {reputation?.tierBadge && (
+                  <Badge variant="tech" size="sm">{reputation.tierBadge}</Badge>
+                )}
                 {Array.isArray(profile.roles) && profile.roles.map((r: string) => (
                   <Badge key={r} variant="role" size="sm">{r}</Badge>
                 ))}

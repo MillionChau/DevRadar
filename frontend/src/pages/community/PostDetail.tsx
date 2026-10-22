@@ -6,13 +6,17 @@ import Badge from '../../components/common/Badge';
 import Input, { Textarea } from '../../components/common/Input';
 import { AppIcon } from '../../components/common/Icon';
 import EmptyState from '../../components/common/EmptyState';
+import MarkdownRenderer from '../../components/common/MarkdownRenderer';
+import { Tooltip } from '../../components/common/Tooltip';
 import { Comment, Post } from '../../types';
 import { communityApi } from '../../api';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 
 export const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { success, warning, error, info } = useToast();
   const [post, setPost] = useState<Post | null>(null);
   const [isLoadingPost, setIsLoadingPost] = useState<boolean>(true);
   const [liked, setLiked] = useState(false);
@@ -27,6 +31,51 @@ export const PostDetail: React.FC = () => {
 
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [copiedMarkdown, setCopiedMarkdown] = useState(false);
+
+  const headings = React.useMemo(() => {
+    if (!post?.content) return [];
+    const lines = post.content.split('\n');
+    const items: { level: number; text: string }[] = [];
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      if (/^##\s+/.test(trimmed)) {
+        items.push({
+          level: 2,
+          text: trimmed.replace(/^##\s+/, '').replace(/\s*#+$/, '').replace(/[*_`]/g, '').trim(),
+        });
+      } else if (/^###\s+/.test(trimmed)) {
+        items.push({
+          level: 3,
+          text: trimmed.replace(/^###\s+/, '').replace(/\s*#+$/, '').replace(/[*_`]/g, '').trim(),
+        });
+      }
+    });
+    return items;
+  }, [post?.content]);
+
+  const readingTime = React.useMemo(() => {
+    if (!post?.content) return 1;
+    const words = post.content.trim().split(/\s+/).length;
+    return Math.max(1, Math.ceil(words / 220));
+  }, [post?.content]);
+
+  const handleCopyMarkdown = () => {
+    if (!post?.content) return;
+    navigator.clipboard.writeText(post.content);
+    setCopiedMarkdown(true);
+    success('Đã sao chép toàn bộ mã nguồn Markdown!', 'Sao chép');
+    setTimeout(() => setCopiedMarkdown(false), 2000);
+  };
+
+  const handleShare = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(window.location.href);
+      success('Đã sao chép liên kết bài viết vào bộ nhớ tạm!', 'Chia sẻ');
+    } else {
+      info('Đường dẫn bài viết: ' + window.location.href, 'Chia sẻ');
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -148,6 +197,11 @@ export const PostDetail: React.FC = () => {
     const nextLiked = !liked;
     setLiked(nextLiked);
     setLikeCount((prev) => (nextLiked ? prev + 1 : Math.max(0, prev - 1)));
+    if (nextLiked) {
+      success('Đã thích bài viết!', 'Tương tác');
+    } else {
+      info('Đã bỏ thích bài viết.', 'Tương tác');
+    }
     if (id) {
       try {
         await communityApi.toggleLikePost(id);
@@ -161,6 +215,11 @@ export const PostDetail: React.FC = () => {
     const nextBookmarked = !bookmarked;
     setBookmarked(nextBookmarked);
     setBookmarkCount((prev) => (nextBookmarked ? prev + 1 : Math.max(0, prev - 1)));
+    if (nextBookmarked) {
+      success('Đã lưu bài viết vào danh sách đánh dấu!', 'Dấu trang');
+    } else {
+      info('Đã bỏ lưu bài viết.', 'Dấu trang');
+    }
     if (id) {
       try {
         await communityApi.toggleBookmarkPost(id);
@@ -230,11 +289,14 @@ export const PostDetail: React.FC = () => {
       try {
         const res = await communityApi.createComment({ postId: id, content: sentText });
         if (res && (res.message?.includes('flagged') || res.data?.isApproved === 0 || res.data?.status === 2)) {
-          alert('Bình luận của bạn chứa nội dung vi phạm tiêu chuẩn an toàn (độc hại / thô tục) và đã bị ẩn để quản trị viên xét duyệt.');
+          warning('Bình luận của bạn chứa nội dung vi phạm tiêu chuẩn an toàn (độc hại / thô tục) và đã bị ẩn để quản trị viên xét duyệt.', 'Cảnh báo kiểm duyệt');
           setComments((prev) => prev.filter((c) => c.id !== tempId));
+        } else {
+          success('Đã đăng bình luận thành công!');
         }
       } catch (err) {
         console.warn('Error sending comment to server:', err);
+        error('Không thể đăng bình luận. Vui lòng thử lại sau.', 'Lỗi');
       }
     }
     setIsSendingComment(false);
@@ -282,13 +344,16 @@ export const PostDetail: React.FC = () => {
           content: finalContent,
         });
         if (res && (res.message?.includes('flagged') || res.data?.isApproved === 0 || res.data?.status === 2)) {
-          alert('Câu trả lời của bạn chứa nội dung vi phạm tiêu chuẩn an toàn (độc hại / thô tục) và đã bị ẩn để quản trị viên xét duyệt.');
+          warning('Câu trả lời của bạn chứa nội dung vi phạm tiêu chuẩn an toàn (độc hại / thô tục) và đã bị ẩn để quản trị viên xét duyệt.', 'Cảnh báo kiểm duyệt');
           setComments((prevComments) =>
             prevComments.map((c) => (c.id === parentCommentId ? { ...c, replies: c.replies?.filter((r) => r.id !== tempId) } : c))
           );
+        } else {
+          success('Đã gửi phản hồi thành công!');
         }
       } catch (err) {
         console.warn('Error sending reply to server:', err);
+        error('Không thể gửi phản hồi. Vui lòng thử lại sau.', 'Lỗi');
       }
     }
   };
@@ -342,26 +407,55 @@ export const PostDetail: React.FC = () => {
               </div>
             </div>
 
-            <Button variant="secondary" size="sm" icon="plus">
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="plus"
+              tooltip="Theo dõi tác giả để nhận thông báo bài viết mới"
+            >
               Theo dõi
             </Button>
           </div>
 
-          {/* Title & Tags */}
+          {/* Title & Tags & Metadata */}
           <div className="flex flex-col gap-3">
-            <h1 className="text-2xl font-bold text-text-main leading-tight">
+            <h1 className="text-2xl md:text-3xl font-extrabold text-text-main leading-tight tracking-tight">
               {post.title}
             </h1>
-            <div className="flex flex-wrap gap-1.5">
-              {(post.tags || []).map((tag) => (
-                <Badge key={tag} variant="tech">#{tag}</Badge>
-              ))}
+
+            <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
+              <div className="flex flex-wrap gap-1.5">
+                {(post.tags || []).map((tag) => (
+                  <Badge key={tag} variant="tech">#{tag}</Badge>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-3 text-xs text-text-muted">
+                <span className="flex items-center gap-1">
+                  <span>⏱️</span>
+                  <span>~{readingTime} phút đọc</span>
+                </span>
+                <span>•</span>
+                <Tooltip content="Sao chép toàn bộ mã nguồn Markdown" position="top">
+                  <button
+                    type="button"
+                    onClick={handleCopyMarkdown}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs text-text-subtle hover:text-brand-secondary bg-surface-elevated/60 hover:bg-surface-elevated border border-surface-border/60 transition-colors"
+                  >
+                    <AppIcon name={copiedMarkdown ? "check" : "copy"} size={12} className={copiedMarkdown ? "text-status-success" : ""} />
+                    <span>{copiedMarkdown ? "Đã sao chép MD!" : "Sao chép Markdown"}</span>
+                  </button>
+                </Tooltip>
+              </div>
             </div>
           </div>
 
           {/* Markdown Content Article */}
-          <article className="prose prose-invert max-w-none text-sm text-text-main leading-relaxed flex flex-col gap-4 border-t border-surface-border pt-4 whitespace-pre-line">
-            <p>{post.content}</p>
+          <article className="border-t border-surface-border pt-6">
+            <MarkdownRenderer 
+              content={post.content || ''} 
+              isTitle={false}
+            />
           </article>
 
           {/* Social Interactions Bar */}
@@ -372,6 +466,7 @@ export const PostDetail: React.FC = () => {
                 size="sm"
                 icon="heart"
                 onClick={handleToggleLikePost}
+                tooltip={liked ? "Bỏ thích bài viết" : "Thích bài viết này"}
               >
                 {liked ? `${likeCount} Đã thích` : `${likeCount} Thích`}
               </Button>
@@ -381,11 +476,18 @@ export const PostDetail: React.FC = () => {
                 size="sm"
                 icon={bookmarked ? 'bookmarkCheck' : 'bookmark'}
                 onClick={handleToggleBookmarkPost}
+                tooltip={bookmarked ? "Bỏ lưu bài viết" : "Lưu vào danh sách bài viết yêu thích"}
               >
                 {bookmarked ? `${bookmarkCount} Đã lưu` : `${bookmarkCount} Lưu bài`}
               </Button>
 
-              <Button variant="ghost" size="sm" icon="share">
+              <Button
+                variant="ghost"
+                size="sm"
+                icon="share"
+                onClick={handleShare}
+                tooltip="Sao chép liên kết chia sẻ bài viết"
+              >
                 Chia sẻ
               </Button>
             </div>
@@ -418,7 +520,14 @@ export const PostDetail: React.FC = () => {
                 rows={3}
               />
               <div className="flex justify-end">
-                <Button type="submit" variant="primary" size="sm" icon="send" disabled={isSendingComment}>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  icon="send"
+                  disabled={isSendingComment}
+                  tooltip="Đăng bình luận kỹ thuật"
+                >
                   {isSendingComment ? 'Đang gửi...' : 'Gửi bình luận'}
                 </Button>
               </div>
@@ -450,38 +559,44 @@ export const PostDetail: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    <p className="text-xs text-text-main leading-relaxed">{comment.content}</p>
+                    <div className="text-xs text-text-main leading-relaxed">
+                      <MarkdownRenderer content={comment.content} isComment={true} />
+                    </div>
 
                     {/* Comment Actions: Like & Reply */}
                     <div className="flex items-center gap-2 pt-1 border-t border-surface-border/50">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleLikeComment(comment.id)}
-                        className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
-                          comment.isLiked
-                            ? 'text-status-danger font-semibold bg-status-danger/10'
-                            : 'text-text-muted hover:text-text-main hover:bg-surface-elevated'
-                        }`}
-                      >
-                        <AppIcon name="heart" size={13} className={comment.isLiked ? 'fill-current' : ''} />
-                        <span>{comment.likeCount || 0}</span>
-                      </button>
+                      <Tooltip content="Thích bình luận" position="top">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleLikeComment(comment.id)}
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
+                            comment.isLiked
+                              ? 'text-status-danger font-semibold bg-status-danger/10'
+                              : 'text-text-muted hover:text-text-main hover:bg-surface-elevated'
+                          }`}
+                        >
+                          <AppIcon name="heart" size={13} className={comment.isLiked ? 'fill-current' : ''} />
+                          <span>{comment.likeCount || 0}</span>
+                        </button>
+                      </Tooltip>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (replyingToId === comment.id) {
-                            setReplyingToId(null);
-                          } else {
-                            setReplyingToId(comment.id);
-                            setReplyText('');
-                          }
-                        }}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs text-text-muted hover:text-text-main hover:bg-surface-elevated transition-colors"
-                      >
-                        <AppIcon name="reply" size={13} />
-                        <span>Trả lời</span>
-                      </button>
+                      <Tooltip content="Trả lời bình luận này" position="top">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (replyingToId === comment.id) {
+                              setReplyingToId(null);
+                            } else {
+                              setReplyingToId(comment.id);
+                              setReplyText('');
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs text-text-muted hover:text-text-main hover:bg-surface-elevated transition-colors"
+                        >
+                          <AppIcon name="reply" size={13} />
+                          <span>Trả lời</span>
+                        </button>
+                      </Tooltip>
                     </div>
 
                     {/* Inline Reply Box for Comment */}
@@ -517,6 +632,7 @@ export const PostDetail: React.FC = () => {
                             size="sm"
                             icon="send"
                             onClick={() => handleSendReply(comment.id)}
+                            tooltip="Gửi phản hồi của bạn"
                           >
                             Gửi phản hồi
                           </Button>
@@ -531,7 +647,9 @@ export const PostDetail: React.FC = () => {
                           <span className="text-xs font-bold text-brand-secondary">{reply.author.displayName || reply.author.userName || 'Thành viên'}</span>
                           <span className="text-[10px] text-text-subtle">{reply.createdAt}</span>
                         </div>
-                        <p className="text-xs text-text-muted leading-relaxed">{reply.content}</p>
+                        <div className="text-xs text-text-muted leading-relaxed">
+                          <MarkdownRenderer content={reply.content} isComment={true} />
+                        </div>
 
                         {/* Reply Actions: Like & Reply */}
                         <div className="flex items-center gap-2 pt-1">
@@ -641,6 +759,36 @@ export const PostDetail: React.FC = () => {
             <span>⚡ {post.author.reputationPoints || 1000} Điểm Rep</span>
           </div>
         </Card>
+
+        {/* Table of Contents (Mục lục bài viết) */}
+        {headings.length > 0 && (
+          <Card variant="default" padding="md" className="flex flex-col gap-3 sticky top-20 border-brand-primary/20 bg-surface-card/90 backdrop-blur-sm shadow-md">
+            <h3 className="text-xs font-bold text-text-main border-b border-surface-border pb-2 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <AppIcon name="layers" size={14} className="text-brand-secondary" />
+                <span>MỤC LỤC BÀI VIẾT</span>
+              </span>
+              <span className="text-[10px] text-text-subtle font-mono">{headings.length} phần</span>
+            </h3>
+            <nav className="flex flex-col gap-1 max-h-[300px] overflow-y-auto pr-1">
+              {headings.map((h, hIdx) => (
+                <div
+                  key={hIdx}
+                  className={`text-xs transition-colors hover:text-brand-secondary leading-snug py-1 flex items-center gap-1.5 cursor-pointer ${
+                    h.level === 3 ? 'pl-4 text-text-subtle text-[11px]' : 'text-text-muted font-medium'
+                  }`}
+                  onClick={() => {
+                    const el = document.getElementById(`heading-${hIdx}`);
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
+                  <span className="text-brand-primary/70">{h.level === 2 ? '•' : '–'}</span>
+                  <span className="truncate">{h.text}</span>
+                </div>
+              ))}
+            </nav>
+          </Card>
+        )}
 
         {/* Related Posts */}
         {relatedPosts.length > 0 && (

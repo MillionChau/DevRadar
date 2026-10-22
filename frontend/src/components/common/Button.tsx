@@ -1,5 +1,6 @@
 import React from 'react';
 import { AppIcon, IconName } from './Icon';
+import { Tooltip, TooltipPosition } from './Tooltip';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
@@ -8,6 +9,8 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   activeIcon?: IconName;
   iconPosition?: 'left' | 'right';
   isLoading?: boolean;
+  tooltip?: React.ReactNode;
+  tooltipPosition?: TooltipPosition;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -18,8 +21,11 @@ export const Button: React.FC<ButtonProps> = ({
   activeIcon,
   iconPosition = 'left',
   isLoading = false,
+  tooltip,
+  tooltipPosition = 'top',
   disabled,
   className = '',
+  title,
   ...props
 }) => {
   const baseClasses = "inline-flex items-center justify-center font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface-bg disabled:opacity-50 disabled:cursor-not-allowed select-none";
@@ -46,7 +52,9 @@ export const Button: React.FC<ButtonProps> = ({
     icon: 20,
   };
 
-  return (
+  const effectiveTooltip = tooltip || title;
+
+  const buttonElement = (
     <button
       className={`${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${className}`}
       disabled={disabled || isLoading}
@@ -65,6 +73,16 @@ export const Button: React.FC<ButtonProps> = ({
       )}
     </button>
   );
+
+  if (effectiveTooltip) {
+    return (
+      <Tooltip content={effectiveTooltip} position={tooltipPosition} disabled={disabled}>
+        {buttonElement}
+      </Tooltip>
+    );
+  }
+
+  return buttonElement;
 };
 
 export default Button;

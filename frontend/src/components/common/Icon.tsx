@@ -70,9 +70,11 @@ import {
   Play,
   Pin,
   HelpCircle,
+  Info,
   AtSign,
   Server,
-  Reply
+  Reply,
+  Copy
 } from 'lucide';
 
 // Official GitHub SVG on 24x24 grid for Morphicons compatibility
@@ -225,12 +227,16 @@ export const ICON_MAP: Record<string, any> = {
   Pin: Pin,
   helpCircle: HelpCircle,
   HelpCircle: HelpCircle,
+  info: Info,
+  Info: Info,
   atSign: AtSign,
   AtSign: AtSign,
   server: Server,
   Server: Server,
   reply: Reply,
-  Reply: Reply
+  Reply: Reply,
+  copy: Copy,
+  Copy: Copy
 };
 
 export type IconName = string;

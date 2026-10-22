@@ -85,6 +85,26 @@ export const authApi = {
     return res.data?.data || res.data || res;
   },
 
+  /** Tải lên ảnh đại diện lên MinIO S3 (Nén WebP) */
+  uploadAvatar: async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await apiClient.post<any>('/identity/api/v1/Users/me/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data?.data || res.data || res;
+  },
+
+  /** Tải lên ảnh bìa trang cá nhân lên MinIO S3 (Nén WebP) */
+  uploadCover: async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await apiClient.post<any>('/identity/api/v1/Users/me/cover', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data?.data || res.data || res;
+  },
+
   /** Đăng xuất: xóa token tại client */
   logout: () => {
     apiClient.clearTokens();
