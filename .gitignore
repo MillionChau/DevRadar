@@ -67,3 +67,15 @@ KienTruc_Va_KyThuat_Code_CSDL_HN_NET.md
 ai/
 .a.freebuff/
 /docs/ui/
+
+# DevRadar Documentation & Progress
+/docs/progress/
+/docs/progess/
+docs/*.md
+docs/*.xlsx
+commit_list.md
+
+# AI-generated maintenance & seed scripts
+scripts/*.sql
+scripts/*.py
+
