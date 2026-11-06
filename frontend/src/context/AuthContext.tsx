@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { authApi } from '../api';
 import { recordActivity } from '../utils/activityLogger';
+import { getSafeAvatarUrl } from '../utils/avatarHelper';
 
 interface AuthContextType {
   user: User | null;
@@ -10,6 +11,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
+  updateUser: (partial: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -127,15 +129,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userRole = 'Moderator';
       }
 
+      const uname = resUser?.userName || tokenUser?.userName || email.split('@')[0];
+      const dname = resUser?.fullName || tokenUser?.displayName || resUser?.userName || email.split('@')[0];
       const u: User = {
         id: resUser?.id || tokenUser?.id || 'usr-live',
-        userName: resUser?.userName || tokenUser?.userName || email.split('@')[0],
+        userName: uname,
         email: resUser?.email || tokenUser?.email || email,
-        displayName: resUser?.fullName || tokenUser?.displayName || resUser?.userName || email.split('@')[0],
-        avatarUrl: resUser?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces',
+        displayName: dname,
+        avatarUrl: getSafeAvatarUrl(resUser?.avatarUrl || tokenUser?.avatarUrl, uname || dname, userRole),
         bio: resUser?.bio || 'Thành viên DevRadar Community',
         role: userRole,
-        reputationPoints: resUser?.reputationPoints || 1200,
+        reputationPoints: resUser?.reputationPoints ?? 1200,
         createdAt: resUser?.createdAt || new Date().toISOString(),
       };
       setUser(u);
@@ -165,8 +169,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  const updateUser = (partial: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      const updated = { ...prev, ...partial };
+      localStorage.setItem('devradar_user', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, role, isAuthenticated, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, role, isAuthenticated, isLoading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

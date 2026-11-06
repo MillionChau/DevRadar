@@ -1,14 +1,20 @@
 import { apiClient } from './client';
 import { Post, Comment, TechZone, UserReputation, ReputationTransaction, LeaderboardUser } from '../types';
+import { getSafeAvatarUrl } from '../utils/avatarHelper';
 
 export interface GetPostsParams {
+  page?: number;
   pageNumber?: number;
   pageSize?: number;
+  cursor?: string;
   techZoneId?: string;
+  techZoneSlug?: string;
   authorId?: string;
+  search?: string;
   searchTerm?: string;
   tag?: string;
-  sortBy?: 'latest' | 'trending' | 'top';
+  status?: number;
+  sortBy?: 'latest' | 'trending' | 'top' | 'relevant' | string;
 }
 
 export interface CreatePostPayload {
@@ -24,9 +30,32 @@ export interface CreateCommentPayload {
 }
 
 export const communityApi = {
-  /** Lấy danh sách bài viết trên Bảng tin (FR-10, UC-10) */
-  getPosts: async (params?: GetPostsParams): Promise<{ items: Post[]; totalCount: number }> => {
-    const res = await apiClient.get<any>('/community/api/Posts', { params: params as any });
+  /** Lấy danh sách bài viết trên Bảng tin (FR-10, UC-10) - Hỗ trợ cả Cursor-based Infinite Scroll & Pagination */
+  getPosts: async (
+    params?: GetPostsParams
+  ): Promise<{
+    items: Post[];
+    totalCount: number;
+    nextCursor?: string | null;
+    hasMore?: boolean;
+    page?: number;
+    totalPages?: number;
+  }> => {
+    const queryParams: Record<string, any> = {};
+    const page = params?.page ?? params?.pageNumber;
+    if (page) queryParams.page = page;
+    if (params?.pageSize) queryParams.pageSize = params.pageSize;
+    if (params?.cursor) queryParams.cursor = params.cursor;
+    const search = params?.search ?? params?.searchTerm;
+    if (search) queryParams.search = search;
+    if (params?.techZoneId) queryParams.techZoneId = params.techZoneId;
+    if (params?.techZoneSlug) queryParams.techZoneSlug = params.techZoneSlug;
+    if (params?.authorId) queryParams.authorId = params.authorId;
+    if (params?.tag) queryParams.tag = params.tag;
+    if (params?.status !== undefined) queryParams.status = params.status;
+    if (params?.sortBy) queryParams.sortBy = params.sortBy;
+
+    const res = await apiClient.get<any>('/community/api/Posts', { params: queryParams });
     const paged = res.data || res;
     const rawItems: any[] = paged.items || paged.data || [];
 
@@ -45,13 +74,16 @@ export const communityApi = {
         authorId: item.authorId || item.createdBy,
         author: {
           id: item.authorId || item.createdBy,
-          displayName: item.authorName || 'DevRadar Member',
-          userName: item.authorUserName || 'developer',
-          avatarUrl: item.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100',
-          reputationPoints: 1200,
+          displayName: item.authorUsername || item.authorName || 'DevRadar Member',
+          userName: item.authorUsername || item.authorUserName || 'developer',
+          avatarUrl: getSafeAvatarUrl(item.authorAvatarUrl || item.authorAvatar, item.authorUsername || item.authorName, 'Member'),
+          reputationPoints: item.authorReputationPoints ?? 0,
+          tierTitle: item.authorTierTitle || 'Code Initiate',
+          tierBadge: (item.authorTierBadge || 'Tân thủ').replace(/^[^\w\s\u00C0-\u1EF9]+/u, '').trim(),
         },
         techZoneId: item.techZoneId,
         techZoneName: item.techZoneName || '.NET Core & C#',
+        techZoneSlug: item.techZoneSlug,
         tags: typeof item.tags === 'string' ? item.tags.split(',').map((t: string) => t.trim()) : item.tags || [],
         likeCount: item.likesCount ?? 0,
         commentCount: item.commentsCount ?? 0,
@@ -65,9 +97,16 @@ export const communityApi = {
       };
     });
 
+    const pageSize = params?.pageSize ?? 10;
+    const totalCount = paged.totalCount ?? items.length;
+
     return {
       items,
-      totalCount: paged.totalCount ?? items.length,
+      totalCount,
+      nextCursor: paged.nextCursor ?? null,
+      hasMore: paged.hasMore !== undefined ? paged.hasMore : items.length >= pageSize,
+      page: paged.page ?? page ?? 1,
+      totalPages: paged.totalPages ?? Math.ceil(totalCount / pageSize),
     };
   },
 
@@ -115,7 +154,7 @@ export const communityApi = {
       author: {
         displayName: item.authorName || 'DevRadar Member',
         userName: item.authorUserName || 'developer',
-        avatarUrl: item.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100',
+        avatarUrl: getSafeAvatarUrl(item.authorAvatar, item.authorUserName || item.authorName, 'Member'),
         reputationPoints: 1200,
       },
       tags: typeof item.tags === 'string' ? item.tags.split(',').map((t: string) => t.trim()) : item.tags || [],
@@ -130,15 +169,38 @@ export const communityApi = {
 
   /** Lấy danh sách bình luận của bài viết (FR-24, UC-24) */
   getComments: async (postId: string): Promise<Comment[]> => {
-    const res = await apiClient.get<any>('/community/api/Comments', { params: { postId } });
-    const raw = res.data || res;
-    const items = Array.isArray(raw) ? raw : raw.items || [];
-    return items;
+    try {
+      const res = await apiClient.get<any>(`/community/api/comments/post/${postId}`);
+      const raw = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : Array.isArray(res?.data?.data) ? res.data.data : res?.items || [];
+      return raw;
+    } catch {
+      const res = await apiClient.get<any>('/community/api/comments', { params: { postId } });
+      const raw = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : Array.isArray(res?.data?.data) ? res.data.data : res?.items || [];
+      return raw;
+    }
   },
 
   /** Gửi bình luận mới hoặc trả lời (FR-25, UC-25) */
   createComment: async (payload: CreateCommentPayload): Promise<any> => {
     return apiClient.post('/community/api/Comments', payload);
+  },
+
+  /** Khôi phục bình luận đã bị ẩn do vi phạm (UC-60 - Quyền Admin) */
+  restoreComment: async (commentId: string): Promise<any> => {
+    const res = await apiClient.put<any>(`/community/api/admin/comments/${commentId}/restore`);
+    return res.data || res;
+  },
+
+  /** Chủ động ẩn bình luận vi phạm tiêu chuẩn cộng đồng (UC-59 - Quyền Admin) */
+  hideComment: async (commentId: string, reason?: string): Promise<any> => {
+    const res = await apiClient.put<any>(`/community/api/admin/comments/${commentId}/hide`, { reason });
+    return res.data || res;
+  },
+
+  /** Xóa vĩnh viễn bình luận khỏi hệ thống (UC-61 - Quyền Admin) */
+  deleteComment: async (commentId: string): Promise<any> => {
+    const res = await apiClient.delete<any>(`/community/api/admin/comments/${commentId}`);
+    return res.data || res;
   },
 
   /** Lấy danh sách tất cả TechZones (UC-14, UC-69) */
@@ -156,6 +218,22 @@ export const communityApi = {
       postCount: tz.postsCount ?? 0,
       followerCount: tz.followersCount ?? 0,
     }));
+  },
+
+  /** Lấy thông tin chi tiết một TechZone theo Slug (UC-14) */
+  getTechZoneBySlug: async (slug: string): Promise<TechZone> => {
+    const res = await apiClient.get<any>(`/community/api/TechZones/${slug}`);
+    const tz = res.data || res;
+    return {
+      id: tz.id,
+      name: tz.name,
+      slug: tz.slug,
+      description: tz.description || '',
+      icon: tz.iconUrl || 'code',
+      color: tz.colorCode || '#3178C6',
+      postCount: tz.postsCount ?? 0,
+      followerCount: tz.followersCount ?? 0,
+    };
   },
 
   /** Bảng xếp hạng lập trình viên uy tín (FR-29, UC-45, UC-46) */
@@ -182,6 +260,18 @@ export const communityApi = {
     const res = await apiClient.get<any>('/community/api/Reputation/history', { params: { limit } });
     const raw = res.data || res;
     return Array.isArray(raw) ? raw : raw.items || [];
+  },
+
+  /** Theo dõi hoặc hủy theo dõi tác giả (UC-30) */
+  toggleFollowUser: async (targetUserId: string): Promise<any> => {
+    const res = await apiClient.post<any>(`/community/api/Follows/${targetUserId}`);
+    return res.data || res;
+  },
+
+  /** Lấy tổng quan trạng thái theo dõi tác giả (UC-30) */
+  getUserFollowSummary: async (userId: string): Promise<{ isFollowing: boolean; followersCount: number; followingCount: number }> => {
+    const res = await apiClient.get<any>(`/community/api/Follows/${userId}/summary`);
+    return res.data?.data || res.data || res;
   },
 };
 

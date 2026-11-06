@@ -4,6 +4,7 @@ import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { Modal } from '../../components/common/Modal';
 import { AppIcon } from '../../components/common/Icon';
+import { Pagination } from '../../components/common/Pagination';
 import { adminApi } from '../../api';
 import { toast } from '../../context/ToastContext';
 
@@ -106,6 +107,8 @@ export const AdminCrawler: React.FC = () => {
   const [jobs, setJobs] = useState<CrawlerJob[]>([]);
   const [isLoadingJobs, setIsLoadingJobs] = useState(true);
   const [selectedJobForModal, setSelectedJobForModal] = useState<CrawlerJob | null>(null);
+  const [jobsPage, setJobsPage] = useState(1);
+  const [jobsPageSize, setJobsPageSize] = useState(10);
 
   // Manual trigger state
   const [repoInput, setRepoInput] = useState('');
@@ -334,7 +337,7 @@ export const AdminCrawler: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-text-main flex items-center gap-2">
             <AppIcon name="Cpu" size={24} className="text-brand-primary" />
-            Giám sát &amp; Cấu hình GitHub Crawler Engine (SCR-22)
+            Giám sát &amp; Cấu hình GitHub Crawler Engine
           </h1>
           <p className="text-sm text-text-muted mt-1">
             FastAPI Service :8000 • Đồng bộ dữ liệu kho mã nguồn, cấu hình chu kỳ Cronjob và điều phối volume cào.
@@ -539,7 +542,7 @@ export const AdminCrawler: React.FC = () => {
                       value={config.modelRetrainDays}
                       onChange={(e) => setConfig({ ...config, modelRetrainDays: parseFloat(e.target.value) || 1.0 })}
                     />
-                    <span className="absolute right-3 top-2.5 text-[11px] text-text-muted">ngày (24h)</span>
+                    <span className="absolute right-3 top-2.5 text-[11px] text-text-muted">ngày</span>
                   </div>
                 </div>
               </div>
@@ -635,9 +638,9 @@ export const AdminCrawler: React.FC = () => {
                     value={config.sortOption}
                     onChange={(e) => setConfig({ ...config, sortOption: e.target.value })}
                   >
-                    <option value="updated">Updated (Mới cập nhật gần nhất)</option>
-                    <option value="stars">Stars (Nhiều sao nhất)</option>
-                    <option value="forks">Forks (Nhiều fork nhất)</option>
+                    <option value="updated">Mới cập nhật gần nhất</option>
+                    <option value="stars">Nhiều sao nhất</option>
+                    <option value="forks">Nhiều fork nhất</option>
                   </select>
                 </div>
               </div>
@@ -666,13 +669,13 @@ export const AdminCrawler: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <label className="block text-text-muted mb-1">Activity (Hoạt động):</label>
+                    <label className="block text-text-muted mb-1">Mức độ hoạt động:</label>
                     <input
                       type="number"
                       step="0.05"
                       min="0"
                       max="1"
-                      className="w-full bg-surface border border-surface-border text-text-main text-xs rounded px-2.5 h-8 font-mono"
+                      className="w-full bg-surface-elevated border border-surface-border text-text-main text-xs rounded-btn px-3 h-9 font-mono focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-colors"
                       value={config.repoHealthWeights.activity}
                       onChange={(e) =>
                         setConfig({
@@ -686,13 +689,13 @@ export const AdminCrawler: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-text-muted mb-1">Community (Cộng đồng):</label>
+                    <label className="block text-text-muted mb-1">Tương tác cộng đồng:</label>
                     <input
                       type="number"
                       step="0.05"
                       min="0"
                       max="1"
-                      className="w-full bg-surface border border-surface-border text-text-main text-xs rounded px-2.5 h-8 font-mono"
+                      className="w-full bg-surface-elevated border border-surface-border text-text-main text-xs rounded-btn px-3 h-9 font-mono focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-colors"
                       value={config.repoHealthWeights.community}
                       onChange={(e) =>
                         setConfig({
@@ -706,13 +709,13 @@ export const AdminCrawler: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-text-muted mb-1">Maintenance (Bảo trì):</label>
+                    <label className="block text-text-muted mb-1">Tần suất bảo trì:</label>
                     <input
                       type="number"
                       step="0.05"
                       min="0"
                       max="1"
-                      className="w-full bg-surface border border-surface-border text-text-main text-xs rounded px-2.5 h-8 font-mono"
+                      className="w-full bg-surface-elevated border border-surface-border text-text-main text-xs rounded-btn px-3 h-9 font-mono focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-colors"
                       value={config.repoHealthWeights.maintenance}
                       onChange={(e) =>
                         setConfig({
@@ -726,13 +729,13 @@ export const AdminCrawler: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-text-muted mb-1">Growth (Tăng trưởng):</label>
+                    <label className="block text-text-muted mb-1">Tốc độ tăng trưởng:</label>
                     <input
                       type="number"
                       step="0.05"
                       min="0"
                       max="1"
-                      className="w-full bg-surface border border-surface-border text-text-main text-xs rounded px-2.5 h-8 font-mono"
+                      className="w-full bg-surface-elevated border border-surface-border text-text-main text-xs rounded-btn px-3 h-9 font-mono focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-colors"
                       value={config.repoHealthWeights.growth}
                       onChange={(e) =>
                         setConfig({
@@ -767,13 +770,13 @@ export const AdminCrawler: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <label className="block text-text-muted mb-1">Density (Mật độ repo):</label>
+                    <label className="block text-text-muted mb-1">Mật độ repository:</label>
                     <input
                       type="number"
                       step="0.05"
                       min="0"
                       max="1"
-                      className="w-full bg-surface border border-surface-border text-text-main text-xs rounded px-2.5 h-8 font-mono"
+                      className="w-full bg-surface-elevated border border-surface-border text-text-main text-xs rounded-btn px-3 h-9 font-mono focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-colors"
                       value={config.langHealthWeights.density}
                       onChange={(e) =>
                         setConfig({
@@ -787,13 +790,13 @@ export const AdminCrawler: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-text-muted mb-1">Popularity (Độ phổ biến):</label>
+                    <label className="block text-text-muted mb-1">Độ phổ biến:</label>
                     <input
                       type="number"
                       step="0.05"
                       min="0"
                       max="1"
-                      className="w-full bg-surface border border-surface-border text-text-main text-xs rounded px-2.5 h-8 font-mono"
+                      className="w-full bg-surface-elevated border border-surface-border text-text-main text-xs rounded-btn px-3 h-9 font-mono focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-colors"
                       value={config.langHealthWeights.popularity}
                       onChange={(e) =>
                         setConfig({
@@ -807,13 +810,13 @@ export const AdminCrawler: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-text-muted mb-1">Ecosystem (Hệ sinh thái):</label>
+                    <label className="block text-text-muted mb-1">Quy mô hệ sinh thái:</label>
                     <input
                       type="number"
                       step="0.05"
                       min="0"
                       max="1"
-                      className="w-full bg-surface border border-surface-border text-text-main text-xs rounded px-2.5 h-8 font-mono"
+                      className="w-full bg-surface-elevated border border-surface-border text-text-main text-xs rounded-btn px-3 h-9 font-mono focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-colors"
                       value={config.langHealthWeights.ecosystem}
                       onChange={(e) =>
                         setConfig({
@@ -827,13 +830,13 @@ export const AdminCrawler: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-text-muted mb-1">Growth (Đà tăng trưởng):</label>
+                    <label className="block text-text-muted mb-1">Đà tăng trưởng:</label>
                     <input
                       type="number"
                       step="0.05"
                       min="0"
                       max="1"
-                      className="w-full bg-surface border border-surface-border text-text-main text-xs rounded px-2.5 h-8 font-mono"
+                      className="w-full bg-surface-elevated border border-surface-border text-text-main text-xs rounded-btn px-3 h-9 font-mono focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-colors"
                       value={config.langHealthWeights.growth}
                       onChange={(e) =>
                         setConfig({
@@ -877,7 +880,7 @@ export const AdminCrawler: React.FC = () => {
                 {config.queries.map((q, idx) => (
                   <span
                     key={idx}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono bg-surface border border-surface-border text-text-main"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono bg-surface-elevated border border-surface-border text-text-main"
                   >
                     {q}
                     <button
@@ -922,7 +925,7 @@ export const AdminCrawler: React.FC = () => {
         <form onSubmit={handleTriggerSync} className="flex flex-col sm:flex-row gap-3 mt-3">
           <div className="flex-1">
             <Input
-              placeholder="owner/repository (e.g. facebook/react hoặc dotnet/aspnetcore)"
+              placeholder="owner/repository ví dụ: facebook/react hoặc dotnet/aspnetcore"
               value={repoInput}
               onChange={(e) => setRepoInput(e.target.value)}
               leftIcon="Github"
@@ -953,19 +956,20 @@ export const AdminCrawler: React.FC = () => {
           </Button>
         </div>
 
-        <Card variant="surface" className="overflow-x-auto p-0 border border-surface-border">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-surface-elevated/70 border-b border-surface-border text-text-muted text-xs uppercase font-semibold">
-              <tr>
-                <th className="py-3 px-4">Mục tiêu / Query</th>
-                <th className="py-3 px-4">Loại &amp; Trạng thái</th>
-                <th className="py-3 px-4">Dữ liệu cào</th>
-                <th className="py-3 px-4">Thời lượng</th>
-                <th className="py-3 px-4">Hạn ngạch GitHub</th>
-                <th className="py-3 px-4">Thời điểm chạy</th>
-                <th className="py-3 px-4 text-right">Chi tiết</th>
-              </tr>
-            </thead>
+        <Card variant="surface" padding="none" className="overflow-hidden border border-surface-border shadow-sm">
+          <div className="overflow-x-auto max-h-[750px] overflow-y-auto">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="sticky top-0 z-20 bg-surface-elevated border-b border-surface-border text-text-muted text-xs uppercase font-semibold shadow-sm">
+                <tr>
+                  <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border">Mục tiêu / Query</th>
+                  <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border">Loại &amp; Trạng thái</th>
+                  <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border">Dữ liệu cào</th>
+                  <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border">Thời lượng</th>
+                  <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border">Hạn ngạch GitHub</th>
+                  <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border">Thời điểm chạy</th>
+                  <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border text-right">Chi tiết</th>
+                </tr>
+              </thead>
             <tbody className="divide-y divide-surface-border/60">
               {isLoadingJobs ? (
                 <tr>
@@ -987,7 +991,7 @@ export const AdminCrawler: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                jobs.map((job) => (
+                jobs.slice((jobsPage - 1) * jobsPageSize, jobsPage * jobsPageSize).map((job) => (
                   <tr key={job.id} className="hover:bg-surface-elevated/40 transition-colors">
                     <td className="py-3 px-4 font-mono font-medium text-text-main text-xs">
                       <div className="flex items-center gap-2 max-w-xs truncate" title={job.targetRepo}>
@@ -1081,7 +1085,21 @@ export const AdminCrawler: React.FC = () => {
               )}
             </tbody>
           </table>
+          </div>
         </Card>
+
+        <Pagination
+          currentPage={jobsPage}
+          totalPages={Math.max(1, Math.ceil(jobs.length / jobsPageSize))}
+          totalCount={jobs.length}
+          pageSize={jobsPageSize}
+          onPageChange={setJobsPage}
+          onPageSizeChange={(sz) => {
+            setJobsPageSize(sz);
+            setJobsPage(1);
+          }}
+          disabled={isLoadingJobs}
+        />
       </div>
 
       {/* Modal Details of Repos Crawled */}
@@ -1127,7 +1145,7 @@ export const AdminCrawler: React.FC = () => {
                   {selectedJobForModal.crawledRepoNames.map((r, i) => (
                     <li
                       key={i}
-                      className="text-xs font-mono p-2 rounded bg-surface border border-surface-border flex items-center justify-between"
+                      className="text-xs font-mono p-2 rounded bg-surface-card border border-surface-border flex items-center justify-between"
                     >
                       <span className="font-semibold text-text-main">{r}</span>
                       <a

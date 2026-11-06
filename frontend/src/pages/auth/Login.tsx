@@ -103,28 +103,28 @@ export const Login: React.FC = () => {
 
         {/* Quick Fill Test Accounts */}
         <div className="p-3 bg-surface-elevated/80 border border-surface-border rounded-btn flex flex-col gap-2">
-          <span className="text-[11px] font-semibold text-text-subtle uppercase">Đăng nhập thử nghiệm theo vai trò (RBAC):</span>
+          <span className="text-[11px] font-semibold text-text-subtle uppercase">Đăng nhập thử nghiệm theo vai trò:</span>
           <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
               onClick={() => handleQuickFill('admin@devradar.io')}
               className="px-2.5 py-1 text-[11px] bg-status-danger/10 text-status-danger hover:bg-status-danger/20 rounded border border-status-danger/30 transition-colors font-medium"
             >
-              🛡️ Admin (admin)
+              🛡️ Admin
             </button>
             <button
               type="button"
               onClick={() => handleQuickFill('moderator@devradar.io')}
               className="px-2.5 py-1 text-[11px] bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 rounded border border-amber-500/30 transition-colors font-medium"
             >
-              ⚖️ Moderator (moderator)
+              ⚖️ Moderator
             </button>
             <button
               type="button"
               onClick={() => handleQuickFill('chautantan@devradar.io')}
               className="px-2.5 py-1 text-[11px] bg-brand-primary/10 text-brand-secondary hover:bg-brand-primary/20 rounded border border-brand-primary/30 transition-colors font-medium"
             >
-              👤 Member (chautantan)
+              👤 Member
             </button>
           </div>
         </div>

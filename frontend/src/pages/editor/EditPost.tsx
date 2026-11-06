@@ -118,7 +118,7 @@ app.MapReverseProxy(proxyPipeline => {
           >
             Hủy bỏ
           </Button>
-          <h1 className="text-lg font-bold text-text-main">Chỉnh sửa Bài viết (SCR-09)</h1>
+          <h1 className="text-lg font-bold text-text-main">Chỉnh sửa Bài viết</h1>
           <Badge variant="success" size="sm">ĐÃ XUẤT BẢN</Badge>
         </div>
 
@@ -206,7 +206,7 @@ app.MapReverseProxy(proxyPipeline => {
                   ref={textareaRef}
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="w-full flex-1 min-h-[440px] p-4 bg-[#090D16] text-text-main font-mono text-xs leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                  className="w-full flex-1 min-h-[440px] p-4 bg-surface-bg text-text-main font-mono text-xs leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-brand-primary"
                   placeholder="Nhập nội dung markdown chuẩn..."
                 />
               </div>
@@ -214,7 +214,7 @@ app.MapReverseProxy(proxyPipeline => {
 
             {/* Live Preview */}
             {(viewMode === 'split' || viewMode === 'preview') && (
-              <div className="flex flex-col h-full bg-[#0E1526]/60">
+              <div className="flex flex-col h-full bg-surface-elevated/40">
                 <div className="px-4 py-2 bg-surface-elevated/30 border-b border-surface-border/60 flex items-center justify-between text-[11px] text-text-subtle font-mono">
                   <span className="flex items-center gap-1.5 text-brand-secondary">
                     <span className="w-2 h-2 rounded-full bg-status-success animate-pulse inline-block" />
@@ -259,10 +259,10 @@ app.MapReverseProxy(proxyPipeline => {
               <code>~~Gạch ngang~~</code>
             </div>
             <div className="flex flex-col gap-1">
-              <span className="font-semibold text-text-main">Khối mã (Code Blocks):</span>
-              <code>```cpp (C++)</code>
-              <code>```csharp (C#)</code>
-              <code>```python (Python)</code>
+              <span className="font-semibold text-text-main">Khối mã:</span>
+              <code>```cpp</code>
+              <code>```csharp</code>
+              <code>```python</code>
             </div>
             <div className="flex flex-col gap-1">
               <span className="font-semibold text-text-main">Tiêu đề & Trích dẫn:</span>

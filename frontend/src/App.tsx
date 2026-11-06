@@ -1,7 +1,9 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
+import { ConfirmProvider } from './context/ConfirmContext';
 import { Layout } from './components/layout/Layout';
 
 // Auth Pages (SCR-01, SCR-02, SCR-03)
@@ -48,16 +50,19 @@ import { ProtectedRoute } from './components/common/RouteGuard';
 
 export const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <BrowserRouter>
-          <Routes>
+    <ThemeProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <ConfirmProvider>
+            <BrowserRouter>
+              <Routes>
           {/* Main App Shell Layout */}
           <Route element={<Layout />}>
             {/* Public Community & Analytics Routes */}
             <Route path="/" element={<Newsfeed />} />
             <Route path="/trending" element={<Newsfeed />} />
             <Route path="/following" element={<Newsfeed />} />
+            <Route path="/relevant" element={<Newsfeed />} />
             <Route path="/posts/:id" element={<PostDetail />} />
             <Route path="/techzones" element={<TechZones />} />
             <Route path="/techzones/:slug" element={<TechZones />} />
@@ -117,8 +122,10 @@ export const App: React.FC = () => {
           </Route>
         </Routes>
       </BrowserRouter>
+        </ConfirmProvider>
     </ToastProvider>
   </AuthProvider>
+</ThemeProvider>
   );
 };
 

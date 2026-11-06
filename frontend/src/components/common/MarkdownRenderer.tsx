@@ -60,6 +60,20 @@ const highlightCode = (code: string, language: string): React.ReactNode => {
     'let', 'static', 'enum', 'await', 'async', 'null', 'true', 'false', 'undefined'
   ]);
 
+  const htmlTags = new Set([
+    'html', 'head', 'body', 'div', 'span', 'p', 'a', 'ul', 'ol', 'li',
+    'table', 'thead', 'tbody', 'tr', 'th', 'td', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'form', 'input', 'button', 'select', 'option', 'textarea', 'label', 'fieldset',
+    'header', 'footer', 'nav', 'section', 'article', 'aside', 'main',
+    'img', 'video', 'audio', 'canvas', 'svg', 'path', 'script', 'style', 'link', 'meta'
+  ]);
+
+  const commonAttrs = new Set([
+    'class', 'classname', 'id', 'name', 'type', 'value', 'placeholder', 'action', 'method',
+    'href', 'src', 'alt', 'title', 'rel', 'target', 'style', 'key', 'ref', 'disabled',
+    'checked', 'required', 'readonly', 'onclick', 'onchange', 'onsubmit'
+  ]);
+
   const getKeywordSet = () => {
     if (lang === 'c++' || lang === 'cpp' || lang === 'c') return cppKeywords;
     if (lang === 'c#' || lang === 'csharp' || lang === 'cs' || lang === 'dotnet') return csharpKeywords;
@@ -79,11 +93,11 @@ const highlightCode = (code: string, language: string): React.ReactNode => {
 
         if (isCommentLine) {
           return (
-            <div key={lineIdx} className="table-row hover:bg-surface-border/20 px-2">
-              <span className="table-cell pr-4 text-right select-none text-text-subtle/50 text-[11px] w-8">
+            <div key={lineIdx} className="table-row hover:bg-slate-200/50 dark:hover:bg-surface-border/20 px-2">
+              <span className="table-cell pr-4 text-right select-none text-slate-400 dark:text-slate-500 text-[11px] w-8">
                 {lineIdx + 1}
               </span>
-              <span className="table-cell text-emerald-400/80 italic font-mono">
+              <span className="table-cell text-emerald-600 dark:text-emerald-400/80 italic font-mono">
                 {lineText}
               </span>
             </div>
@@ -95,37 +109,45 @@ const highlightCode = (code: string, language: string): React.ReactNode => {
         const tokens = lineText.split(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\b\w+\b|[^\w\s])/g).filter(Boolean);
 
         return (
-          <div key={lineIdx} className="table-row hover:bg-surface-border/20 px-2">
-            <span className="table-cell pr-4 text-right select-none text-text-subtle/50 text-[11px] w-8">
+          <div key={lineIdx} className="table-row hover:bg-slate-200/50 dark:hover:bg-surface-border/20 px-2">
+            <span className="table-cell pr-4 text-right select-none text-slate-400 dark:text-slate-500 text-[11px] w-8">
               {lineIdx + 1}
             </span>
             <span className="table-cell whitespace-pre font-mono">
               {tokens.map((token, tokIdx) => {
                 // String literals
                 if ((token.startsWith('"') && token.endsWith('"')) || (token.startsWith("'") && token.endsWith("'"))) {
-                  return <span key={tokIdx} className="text-amber-300">{token}</span>;
+                  return <span key={tokIdx} className="text-amber-700 dark:text-amber-300">{token}</span>;
                 }
                 // Keywords
                 if (keywords.has(token)) {
-                  return <span key={tokIdx} className="text-purple-400 font-semibold">{token}</span>;
+                  return <span key={tokIdx} className="text-purple-600 dark:text-purple-400 font-semibold">{token}</span>;
+                }
+                // HTML / JSX tags
+                if (htmlTags.has(token.toLowerCase())) {
+                  return <span key={tokIdx} className="text-rose-600 dark:text-rose-400 font-semibold">{token}</span>;
+                }
+                // Common JSX/HTML Attributes
+                if (commonAttrs.has(token.toLowerCase())) {
+                  return <span key={tokIdx} className="text-amber-600 dark:text-amber-200">{token}</span>;
                 }
                 // Numbers
                 if (/^\d+(\.\d+)?$/.test(token)) {
-                  return <span key={tokIdx} className="text-emerald-300">{token}</span>;
+                  return <span key={tokIdx} className="text-emerald-600 dark:text-emerald-300 font-medium">{token}</span>;
                 }
-                // Types / Capitalized words (e.g. Console, Task, IServiceCollection, User)
+                // Types / Capitalized words (e.g. Console, Task, IServiceCollection, User, FormData)
                 if (/^[A-Z][A-Za-z0-9_]*$/.test(token)) {
-                  return <span key={tokIdx} className="text-sky-300 font-medium">{token}</span>;
+                  return <span key={tokIdx} className="text-blue-600 dark:text-sky-300 font-semibold">{token}</span>;
                 }
                 // Operators and punctuation
                 if (['=>', '->', '::', '&&', '||', '==', '!=', '<=', '>=', '<', '>', '+', '-', '*', '/', '=', '!', '&', '|', '^', '%'].includes(token)) {
-                  return <span key={tokIdx} className="text-brand-secondary">{token}</span>;
+                  return <span key={tokIdx} className="text-indigo-600 dark:text-cyan-400">{token}</span>;
                 }
                 if (['{', '}', '(', ')', '[', ']', ';', ',', '.'].includes(token)) {
-                  return <span key={tokIdx} className="text-text-muted">{token}</span>;
+                  return <span key={tokIdx} className="text-slate-500 dark:text-slate-400">{token}</span>;
                 }
-                // Default text
-                return <span key={tokIdx} className="text-text-main">{token}</span>;
+                // Default text / identifiers / variables
+                return <span key={tokIdx} className="text-slate-800 dark:text-slate-100">{token}</span>;
               })}
             </span>
           </div>
@@ -148,7 +170,7 @@ export const CodeBlock: React.FC<{ code: string; language: string }> = ({ code, 
   };
 
   return (
-    <div className="my-4 rounded-card overflow-hidden border border-surface-border bg-[#0B101B] shadow-lg group">
+    <div className="my-4 rounded-card overflow-hidden border border-surface-border bg-slate-50/80 dark:bg-[#0B101B] shadow-md group transition-colors">
       {/* Code Header Bar */}
       <div className="flex items-center justify-between px-4 py-2 bg-surface-card border-b border-surface-border/80">
         <div className="flex items-center gap-2">
@@ -185,7 +207,7 @@ export const CodeBlock: React.FC<{ code: string; language: string }> = ({ code, 
       </div>
 
       {/* Code Content */}
-      <div className="p-3 overflow-x-auto text-xs">
+      <div className="p-3 overflow-x-auto text-xs bg-slate-50/50 dark:bg-[#0B101B]">
         {highlightCode(code, language)}
       </div>
     </div>
@@ -203,7 +225,8 @@ export const renderInlineMarkdown = (text: string): React.ReactNode[] => {
   // 4. Italic: \*(.*?)\* or _(.*?)_
   // 5. Strikethrough: ~~(.*?)~~
   // 6. Inline Code: `(.*?)`
-  const regex = /(!?\[.*?\]\(.*?\))|(\*\*.*?\*\*)|(__.*?__)|(\*.*?\*)|(_.*?_)|(~~.*?~~)|(`.*?`)/g;
+  // 7. Mention: @username
+  const regex = /(!?\[.*?\]\(.*?\))|(\*\*.*?\*\*)|(__.*?__)|(\*.*?\*)|(_.*?_)|(~~.*?~~)|(`.*?`)|(@[a-zA-Z0-9_.-]+)/g;
 
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
@@ -286,6 +309,19 @@ export const renderInlineMarkdown = (text: string): React.ReactNode[] => {
         >
           {inner}
         </code>
+      );
+    }
+    // User Mention @username
+    else if (matchedStr.startsWith('@') && matchedStr.length > 1) {
+      const username = matchedStr.substring(1);
+      parts.push(
+        <span
+          key={match.index}
+          className="inline-flex items-center px-1.5 py-0.2 mx-0.5 rounded font-semibold text-brand-secondary bg-brand-primary/15 border border-brand-primary/30 text-[11px] hover:bg-brand-primary/25 cursor-pointer transition-colors shadow-xs"
+          title={`Người dùng @${username}`}
+        >
+          @{username}
+        </span>
       );
     }
 
@@ -481,27 +517,27 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       if (alertType) {
         const alertStyles = {
           NOTE: {
-            bg: 'bg-blue-500/10 border-blue-500/40 text-blue-300',
+            bg: 'bg-blue-500/10 border-blue-500/40 text-blue-600 dark:text-blue-300',
             icon: 'helpCircle',
             label: 'LƯU Ý (NOTE)',
           },
           TIP: {
-            bg: 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300',
+            bg: 'bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-300',
             icon: 'sparkles',
             label: 'MẸO / GỢI Ý (TIP)',
           },
           IMPORTANT: {
-            bg: 'bg-purple-500/10 border-purple-500/40 text-purple-300',
+            bg: 'bg-purple-500/10 border-purple-500/40 text-purple-700 dark:text-purple-300',
             icon: 'award',
             label: 'QUAN TRỌNG (IMPORTANT)',
           },
           WARNING: {
-            bg: 'bg-amber-500/10 border-amber-500/40 text-amber-300',
+            bg: 'bg-amber-500/10 border-amber-500/40 text-amber-700 dark:text-amber-300',
             icon: 'alertTriangle',
             label: 'CẢNH BÁO (WARNING)',
           },
           CAUTION: {
-            bg: 'bg-rose-500/10 border-rose-500/40 text-rose-300',
+            bg: 'bg-rose-500/10 border-rose-500/40 text-rose-700 dark:text-rose-300',
             icon: 'shieldAlert',
             label: 'CẨN TRỌNG (CAUTION)',
           },

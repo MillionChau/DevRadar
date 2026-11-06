@@ -9,7 +9,6 @@ interface SidebarItem {
   label: string;
   path: string;
   icon: IconName;
-  badge?: string;
   requireAuth?: boolean;
 }
 
@@ -43,12 +42,12 @@ export const Sidebar: React.FC = () => {
   const exploreItems: SidebarItem[] = [
     { label: 'Tất cả bài viết', path: '/', icon: 'home' },
     { label: 'Đang thịnh hành', path: '/trending', icon: 'trending' },
-    { label: 'Đang theo dõi', path: '/following', icon: 'compass', requireAuth: true },
+    { label: 'Phù hợp với bạn', path: '/following', icon: 'compass' },
   ];
 
   const personalItems: SidebarItem[] = [
     { label: 'Bài viết của tôi', path: '/profile/me', icon: 'fileText', requireAuth: true },
-    { label: 'Đã lưu (Bookmarks)', path: '/bookmarks', icon: 'bookmark', requireAuth: true },
+    { label: 'Đã lưu', path: '/bookmarks', icon: 'bookmark', requireAuth: true },
     { label: 'GitHub Analytics', path: '/analytics/repo-health', icon: 'radar' },
   ];
 

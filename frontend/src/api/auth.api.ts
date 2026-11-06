@@ -1,5 +1,6 @@
 import { apiClient } from './client';
 import { User, AuthResponse } from '../types';
+import { getSafeAvatarUrl } from '../utils/avatarHelper';
 
 export interface LoginPayload {
   email?: string;
@@ -61,15 +62,16 @@ export const authApi = {
       ? 'Admin'
       : (Array.isArray(d.roles) && d.roles.includes('Moderator') ? 'Moderator' : 'Member');
 
+    const displayName = d.fullName || d.userName;
     return {
       id: d.id,
       userName: d.userName,
       email: d.email,
-      displayName: d.fullName || d.userName,
-      avatarUrl: d.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces',
+      displayName,
+      avatarUrl: getSafeAvatarUrl(d.avatarUrl, d.userName || displayName, userRole),
       bio: d.bio || 'Thành viên DevRadar Community',
       role: userRole,
-      reputationPoints: d.reputationPoints || 1200,
+      reputationPoints: d.reputationPoints ?? 1200,
       createdAt: d.createdAt || new Date().toISOString(),
     };
   },
@@ -89,9 +91,7 @@ export const authApi = {
   uploadAvatar: async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('file', file);
-    const res = await apiClient.post<any>('/identity/api/v1/Users/me/avatar', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const res = await apiClient.post<any>('/identity/api/v1/Users/me/avatar', formData);
     return res.data?.data || res.data || res;
   },
 
@@ -99,9 +99,7 @@ export const authApi = {
   uploadCover: async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('file', file);
-    const res = await apiClient.post<any>('/identity/api/v1/Users/me/cover', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const res = await apiClient.post<any>('/identity/api/v1/Users/me/cover', formData);
     return res.data?.data || res.data || res;
   },
 

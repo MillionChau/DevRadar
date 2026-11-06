@@ -13,11 +13,30 @@ class SignalRService {
   private isIntentionalClose = false;
 
   constructor(hubPath: string = '/community/hubs/community') {
-    const gatewayHost = (import.meta as any).env?.VITE_GATEWAY_WS_URL || 'ws://localhost:5000';
-    this.url = `${gatewayHost}${hubPath}`;
+    const customHost = (import.meta as any).env?.VITE_GATEWAY_WS_URL;
+    if (customHost !== undefined && customHost !== null && customHost !== '') {
+      this.url = `${customHost}${hubPath}`;
+    } else {
+      const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const envBaseUrl = (import.meta as any).env?.VITE_API_BASE_URL;
+      if (
+        typeof window !== 'undefined' &&
+        (envBaseUrl === '' || window.location.port === '3000' || window.location.port === '80')
+      ) {
+        this.url = `${protocol}//${window.location.host}${hubPath}`;
+      } else {
+        const host = typeof window !== 'undefined' && window.location.hostname ? window.location.hostname : 'localhost';
+        this.url = `${protocol}//${host}:5000${hubPath}`;
+      }
+    }
   }
 
   public connect() {
+    if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)) {
+      return;
+    }
+    this.isIntentionalClose = false;
+
     const token = localStorage.getItem('devradar_access_token');
     const connectUrl = token ? `${this.url}?access_token=${token}` : this.url;
 
@@ -34,7 +53,10 @@ class SignalRService {
           const messages = event.data.split('\x1e').filter(Boolean);
           for (const msg of messages) {
             const parsed = JSON.parse(msg);
-            if (parsed.type === 1 && parsed.target) {
+            if (parsed.type === 6) {
+              // SignalR Ping keepalive frame
+              this.ws?.send(JSON.stringify({ type: 6 }) + '\x1e');
+            } else if (parsed.type === 1 && parsed.target) {
               const callbacks = this.handlers.get(parsed.target);
               callbacks?.forEach((cb) => cb(parsed.arguments?.[0]));
             }

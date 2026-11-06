@@ -37,7 +37,7 @@ export const ProtectedRoute: React.FC<RouteGuardProps> = ({ allowedRoles }) => {
       <div className="max-w-2xl mx-auto py-12">
         <ErrorState
           code={403}
-          title="Truy cập bị từ chối (403 Forbidden)"
+          title="Truy cập bị từ chối"
           message={`Trang này yêu cầu quyền [${allowedRoles.join(' hoặc ')}]. Vai trò hiện tại của bạn là [${role}].`}
         />
       </div>

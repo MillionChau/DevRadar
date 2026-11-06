@@ -9,6 +9,8 @@ import MarkdownRenderer from '../../components/common/MarkdownRenderer';
 import { useAuth } from '../../context/AuthContext';
 import { analyticsApi } from '../../api';
 import { toast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
+import { getSafeAvatarUrl } from '../../utils/avatarHelper';
 
 interface ReportComment {
   id: string;
@@ -39,6 +41,7 @@ interface TechReportDetail {
 }
 
 export const ReportDetail: React.FC = () => {
+  const { confirm } = useConfirm();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, isAuthenticated, role } = useAuth();
@@ -138,7 +141,16 @@ export const ReportDetail: React.FC = () => {
   };
 
   const handleDeleteComment = async (commentId: string) => {
-    if (!report || !window.confirm('Bạn có chắc muốn xóa bình luận này?')) return;
+    if (!report) return;
+    const ok = await confirm({
+      title: 'Xóa bình luận',
+      message: 'Bạn có chắc chắn muốn xóa bình luận này?',
+      confirmText: 'Xóa bình luận',
+      cancelText: 'Hủy bỏ',
+      variant: 'danger',
+    });
+    if (!ok) return;
+
     try {
       await analyticsApi.deleteReportComment(report.id, commentId);
       setComments((prev) => prev.filter((c) => c.id !== commentId));
@@ -177,7 +189,7 @@ export const ReportDetail: React.FC = () => {
       {/* Breadcrumb Navigation */}
       <div className="flex items-center gap-2 text-xs text-text-muted">
         <Link to="/analytics/reports" className="hover:text-brand-secondary transition-colors">
-          Báo cáo phân tích (SCR-13)
+          Báo cáo phân tích
         </Link>
         <span>/</span>
         <span className="text-text-main font-semibold truncate max-w-sm">{report.title}</span>
@@ -186,14 +198,30 @@ export const ReportDetail: React.FC = () => {
       {/* Article Header Card */}
       <Card variant="elevated" padding="lg" className="border-surface-border/80 flex flex-col gap-4">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <Badge variant="tech" size="sm">
-            {report.category}
-          </Badge>
+          {report.category === 'MONTHLY_TREND' ? (
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
+              📅 Báo cáo Chuyển dịch Xu hướng Tháng
+            </span>
+          ) : report.category === 'REPOSITORY' ? (
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
+              🔍 Đánh giá Chuyên sâu Kho mã nguồn
+            </span>
+          ) : (
+            <Badge variant="tech" size="sm">
+              {report.category}
+            </Badge>
+          )}
 
           <div className="flex items-center gap-2 text-xs text-text-subtle">
-            <span className="font-mono">👁️ {report.views_count || 1} lượt đọc</span>
+            <span className="font-mono inline-flex items-center gap-1">
+              <AppIcon name="Eye" size={13} />
+              <span>{report.views_count || 1} lượt đọc</span>
+            </span>
             <span>•</span>
-            <span className="font-mono">❤️ {likesCount} lượt thích</span>
+            <span className="font-mono inline-flex items-center gap-1">
+              <AppIcon name="Heart" size={13} className="text-status-danger" />
+              <span>{likesCount} lượt thích</span>
+            </span>
           </div>
         </div>
 
@@ -245,7 +273,7 @@ export const ReportDetail: React.FC = () => {
         <div className="p-4 rounded-card bg-brand-primary/5 border border-brand-primary/20 flex flex-col gap-1.5">
           <div className="flex items-center gap-2 text-xs font-bold text-brand-secondary uppercase">
             <AppIcon name="radar" size={14} />
-            <span>Tóm tắt phát hiện chính (Executive Summary)</span>
+            <span>Tóm tắt phát hiện chính</span>
           </div>
           <p className="text-xs text-text-main leading-relaxed">{report.summary}</p>
         </div>
@@ -299,7 +327,7 @@ export const ReportDetail: React.FC = () => {
             <form onSubmit={handlePostComment} className="space-y-3">
               <div className="flex items-center gap-2">
                 <img
-                  src={user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100'}
+                  src={getSafeAvatarUrl(user.avatarUrl, user.userName || user.displayName, role)}
                   alt={user.displayName}
                   className="w-6 h-6 rounded-full object-cover border border-surface-border"
                 />
@@ -365,7 +393,7 @@ export const ReportDetail: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <img
-                      src={cmt.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100'}
+                      src={getSafeAvatarUrl(cmt.author_avatar, cmt.author_name, 'Member')}
                       alt={cmt.author_name}
                       className="w-7 h-7 rounded-full object-cover border border-surface-border"
                     />

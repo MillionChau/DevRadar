@@ -93,13 +93,17 @@ public void ConfigureServices(IServiceCollection services)
     const fullContent = `# ${title.trim()}\n\n${content.trim()}`;
 
     try {
-      await communityApi.createPost({
+      const res: any = await communityApi.createPost({
         content: fullContent,
         techZoneId: techZone || undefined,
         tags: tagsInput,
       });
 
-      toast.success('Đã xuất bản bài viết thành công!', 'Cộng đồng DevRadar');
+      if (res && (res.message?.includes('flagged') || res.data?.isApproved === 0 || res.data?.status === 2)) {
+        toast.warning('Bài viết của bạn chứa nội dung vi phạm tiêu chuẩn cộng đồng và đã bị ẩn để quản trị viên xét duyệt.', 'Cảnh báo kiểm duyệt');
+      } else {
+        toast.success('Đã xuất bản bài viết thành công!', 'Cộng đồng DevRadar');
+      }
       navigate('/');
     } catch (err: any) {
       console.warn('Create post error from API Gateway / QualityService:', err);
@@ -134,7 +138,7 @@ public void ConfigureServices(IServiceCollection services)
           >
             Quay lại
           </Button>
-          <h1 className="text-lg font-bold text-text-main">Soạn thảo Bài viết mới (SCR-08)</h1>
+          <h1 className="text-lg font-bold text-text-main">Soạn thảo Bài viết mới</h1>
           <Badge variant="reputation" size="sm">Bản nháp</Badge>
         </div>
 
@@ -220,7 +224,7 @@ public void ConfigureServices(IServiceCollection services)
           </select>
 
           <Input
-            placeholder="Tags (phân cách bằng dấu phẩy)"
+            placeholder="Tags phân cách bằng dấu phẩy"
             value={tagsInput}
             onChange={(e) => setTagsInput(e.target.value)}
             className="w-1/2 text-xs font-mono"
@@ -243,14 +247,14 @@ public void ConfigureServices(IServiceCollection services)
             {(viewMode === 'split' || viewMode === 'edit') && (
               <div className="flex flex-col h-full bg-surface-card">
                 <div className="px-4 py-2 bg-surface-elevated/30 border-b border-surface-border/60 flex items-center justify-between text-[11px] text-text-subtle font-mono">
-                  <span>SOẠN THẢO MARKDOWN (EDITOR)</span>
+                  <span>SOẠN THẢO MARKDOWN</span>
                   <span>{content.length} ký tự • {content.split(/\s+/).filter(Boolean).length} từ</span>
                 </div>
                 <textarea
                   ref={textareaRef}
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="w-full flex-1 min-h-[440px] p-4 bg-[#090D16] text-text-main font-mono text-xs leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                  className="w-full flex-1 min-h-[440px] p-4 bg-surface-bg text-text-main font-mono text-xs leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-brand-primary"
                   placeholder="Nhập nội dung markdown chuẩn: **in đậm**, *nghiêng*, ## tiêu đề, ```cpp khối code..."
                 />
               </div>
@@ -258,7 +262,7 @@ public void ConfigureServices(IServiceCollection services)
 
             {/* Live Preview */}
             {(viewMode === 'split' || viewMode === 'preview') && (
-              <div className="flex flex-col h-full bg-[#0E1526]/60">
+              <div className="flex flex-col h-full bg-surface-elevated/40">
                 <div className="px-4 py-2 bg-surface-elevated/30 border-b border-surface-border/60 flex items-center justify-between text-[11px] text-text-subtle font-mono">
                   <span className="flex items-center gap-1.5 text-brand-secondary">
                     <span className="w-2 h-2 rounded-full bg-status-success animate-pulse inline-block" />
@@ -307,7 +311,7 @@ public void ConfigureServices(IServiceCollection services)
               <code>**In đậm** / *In nghiêng*</code>
             </div>
             <div className="flex flex-col gap-1">
-              <span className="font-semibold text-text-main">Khối mã (Code Blocks):</span>
+              <span className="font-semibold text-text-main">Khối mã:</span>
               <code>```cpp // C++ code</code>
               <code>```csharp // C# code</code>
               <code>```python // Python code</code>
@@ -319,7 +323,7 @@ public void ConfigureServices(IServiceCollection services)
               <code>~~Gạch ngang~~</code>
             </div>
             <div className="flex flex-col gap-1">
-              <span className="font-semibold text-text-main">Hộp cảnh báo (Alerts):</span>
+              <span className="font-semibold text-text-main">Hộp cảnh báo:</span>
               <code>&gt; [!NOTE] Lưu ý</code>
               <code>&gt; [!TIP] Mẹo hay</code>
               <code>&gt; [!WARNING] Cảnh báo</code>

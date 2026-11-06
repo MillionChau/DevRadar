@@ -71,11 +71,16 @@ ai/
 # DevRadar Documentation & Progress
 /docs/progress/
 /docs/progess/
+/docs/algorithm/
 docs/*.md
 docs/*.xlsx
 commit_list.md
+TONG_QUAN_CONG_NGHE_VA_THUAT_TOAN.md
+*.md
+!README.md
 
 # AI-generated maintenance & seed scripts
 scripts/*.sql
 scripts/*.py
-
+scripts/seed/
+/docs/workflow/

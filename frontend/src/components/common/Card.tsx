@@ -26,9 +26,16 @@ export const Card: React.FC<CardProps> = ({
     interactive: 'bg-surface-card border border-surface-border hover:border-brand-primary/40 rounded-card transition-all duration-150 hover:shadow-md cursor-pointer',
   };
 
+  // If className already defines custom padding (e.g. p-0, p-4, px-2, etc.) and padding prop was left as default 'md',
+  // avoid injecting the default 'p-6' to prevent conflicting CSS overrides.
+  const hasCustomPaddingInClass = /(?:^|\s)p(?:[xytrbl])?-(?:0|\d+|\[.+\])(?:\s|$)/.test(className);
+  const resolvedPaddingClass = padding !== 'md' 
+    ? paddingClasses[padding] 
+    : (hasCustomPaddingInClass ? '' : paddingClasses.md);
+
   return (
     <div
-      className={`${variantClasses[variant]} ${paddingClasses[padding]} ${className}`}
+      className={`${variantClasses[variant]} ${resolvedPaddingClass} ${className}`.trim()}
       {...props}
     >
       {children}

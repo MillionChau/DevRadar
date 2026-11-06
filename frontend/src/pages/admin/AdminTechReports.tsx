@@ -4,8 +4,10 @@ import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import Modal from '../../components/common/Modal';
 import { AppIcon } from '../../components/common/Icon';
+import { Pagination } from '../../components/common/Pagination';
 import { analyticsApi } from '../../api';
 import { toast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 
 interface TechReportItem {
   id: string;
@@ -25,11 +27,14 @@ interface TechReportItem {
 }
 
 export const AdminTechReports: React.FC = () => {
+  const { confirm } = useConfirm();
   const [reports, setReports] = useState<TechReportItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'all' | 'PUBLISHED' | 'DRAFT' | 'ARCHIVED'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Modals state
   const [previewReport, setPreviewReport] = useState<TechReportItem | null>(null);
@@ -43,6 +48,9 @@ export const AdminTechReports: React.FC = () => {
   const [aiTopic, setAiTopic] = useState('');
   const [aiCategory, setAiCategory] = useState('TREND');
   const [aiTargetTech, setAiTargetTech] = useState('');
+  const [aiTargetRepo, setAiTargetRepo] = useState('');
+  const [aiMonthPeriod, setAiMonthPeriod] = useState(`Tháng ${new Date().getMonth() + 1}/${new Date().getFullYear()}`);
+  const [monitoredRepos, setMonitoredRepos] = useState<any[]>([]);
   const [aiStatus, setAiStatus] = useState('DRAFT');
 
   // Manual Form state
@@ -86,8 +94,20 @@ export const AdminTechReports: React.FC = () => {
   const handleOpenAIModal = async () => {
     setIsAIModalOpen(true);
     try {
-      const res = await analyticsApi.getAIReportSuggestions();
-      setAiSuggestions(res.suggested_topics || []);
+      const [sugRes, reposRes] = await Promise.allSettled([
+        analyticsApi.getAIReportSuggestions(),
+        analyticsApi.getMonitoredRepos(30),
+      ]);
+      if (sugRes.status === 'fulfilled') {
+        setAiSuggestions(sugRes.value.suggested_topics || []);
+      }
+      if (reposRes.status === 'fulfilled') {
+        const repoList = Array.isArray(reposRes.value) ? reposRes.value : (reposRes.value as any)?.items || [];
+        setMonitoredRepos(repoList);
+        if (repoList.length > 0 && !aiTargetRepo) {
+          setAiTargetRepo(repoList[0].full_name || repoList[0].name);
+        }
+      }
     } catch {
       setAiSuggestions([]);
     }
@@ -103,7 +123,9 @@ export const AdminTechReports: React.FC = () => {
       const res = await analyticsApi.generateAIReport({
         topic: aiTopic.trim(),
         category: aiCategory,
-        target_tech: aiTargetTech.trim() || undefined,
+        target_tech: aiCategory !== 'REPOSITORY' && aiCategory !== 'MONTHLY_TREND' ? (aiTargetTech.trim() || undefined) : undefined,
+        target_repo: aiCategory === 'REPOSITORY' ? (aiTargetRepo.trim() || undefined) : undefined,
+        month_period: aiCategory === 'MONTHLY_TREND' ? (aiMonthPeriod.trim() || undefined) : undefined,
         status: aiStatus,
         save_to_db: true,
         include_live_metrics: true,
@@ -120,7 +142,16 @@ export const AdminTechReports: React.FC = () => {
   };
 
   const handlePublish = async (id: string) => {
-    if (!window.confirm('Bạn có chắc muốn duyệt xuất bản báo cáo này ra cộng đồng?')) return;
+    const ok = await confirm({
+      title: 'Xuất bản báo cáo công nghệ',
+      message: 'Bạn có chắc chắn muốn duyệt và xuất bản báo cáo này ra cộng đồng DevRadar?',
+      confirmText: 'Duyệt xuất bản',
+      cancelText: 'Hủy bỏ',
+      variant: 'primary',
+      icon: 'CheckCircle',
+    });
+    if (!ok) return;
+
     try {
       await analyticsApi.publishAdminReport(id);
       toast.success('Đã duyệt xuất bản báo cáo ra cộng đồng!');
@@ -131,7 +162,15 @@ export const AdminTechReports: React.FC = () => {
   };
 
   const handleHide = async (id: string) => {
-    if (!window.confirm('Bạn có chắc muốn ẩn báo cáo này khỏi giao diện người dùng?')) return;
+    const ok = await confirm({
+      title: 'Ẩn báo cáo công nghệ',
+      message: 'Bạn có chắc chắn muốn ẩn báo cáo này khỏi giao diện người dùng công khai?',
+      confirmText: 'Ẩn báo cáo',
+      cancelText: 'Hủy bỏ',
+      variant: 'warning',
+    });
+    if (!ok) return;
+
     try {
       await analyticsApi.hideAdminReport(id);
       toast.warning('Đã ẩn báo cáo khỏi giao diện người dùng');
@@ -142,7 +181,15 @@ export const AdminTechReports: React.FC = () => {
   };
 
   const handleDelete = async (id: string, title: string) => {
-    if (!window.confirm(`Xác nhận xóa vĩnh viễn báo cáo: "${title}"?`)) return;
+    const ok = await confirm({
+      title: 'Xóa báo cáo công nghệ',
+      message: `Xác nhận xóa vĩnh viễn báo cáo: "${title}"? Thao tác này không thể hoàn tác.`,
+      confirmText: 'Xóa báo cáo',
+      cancelText: 'Hủy bỏ',
+      variant: 'danger',
+    });
+    if (!ok) return;
+
     try {
       await analyticsApi.deleteAdminReport(id);
       toast.success('Đã xóa vĩnh viễn báo cáo!');
@@ -233,8 +280,8 @@ export const AdminTechReports: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" icon="radar" onClick={handleOpenAIModal}>
-            ✨ AI Sinh báo cáo
+          <Button variant="secondary" size="sm" icon="Sparkles" onClick={handleOpenAIModal}>
+            AI Sinh báo cáo
           </Button>
           <Button variant="primary" size="sm" icon="plus" onClick={handleOpenCreateModal}>
             Tạo báo cáo mới
@@ -255,12 +302,12 @@ export const AdminTechReports: React.FC = () => {
           <span className="text-[10px] text-emerald-400/70">Hiển thị công khai</span>
         </Card>
         <Card variant="elevated" padding="md" className="flex flex-col gap-1 border-amber-500/30 bg-amber-500/5">
-          <span className="text-[11px] font-semibold text-amber-400 uppercase">Bản nháp (Draft)</span>
+          <span className="text-[11px] font-semibold text-amber-400 uppercase">Bản nháp</span>
           <span className="text-2xl font-bold text-amber-400 font-mono">{draftCount}</span>
           <span className="text-[10px] text-amber-400/70">Chờ duyệt nội dung</span>
         </Card>
         <Card variant="elevated" padding="md" className="flex flex-col gap-1 border-surface-border/80">
-          <span className="text-[11px] font-semibold text-text-subtle uppercase">Đã ẩn (Archived)</span>
+          <span className="text-[11px] font-semibold text-text-subtle uppercase">Đã ẩn</span>
           <span className="text-2xl font-bold text-text-muted font-mono">{archivedCount}</span>
           <span className="text-[10px] text-text-subtle">Lưu trữ nội bộ</span>
         </Card>
@@ -299,10 +346,12 @@ export const AdminTechReports: React.FC = () => {
             className="bg-surface-elevated border border-surface-border text-text-main text-xs rounded-btn px-2.5 h-8 focus:outline-none"
           >
             <option value="all">Mọi chuyên mục</option>
-            <option value="TREND">Xu hướng (TREND)</option>
-            <option value="LANGUAGE">Ngôn ngữ (LANGUAGE)</option>
-            <option value="FRAMEWORK">Framework (FRAMEWORK)</option>
-            <option value="DEVOPS">DevOps & Cloud (DEVOPS)</option>
+            <option value="MONTHLY_TREND">📅 Xu hướng Tháng</option>
+            <option value="REPOSITORY">🔍 Đánh giá Repo</option>
+            <option value="TREND">Xu hướng Chung</option>
+            <option value="LANGUAGE">Ngôn ngữ</option>
+            <option value="FRAMEWORK">Framework</option>
+            <option value="DEVOPS">DevOps & Cloud</option>
           </select>
 
           <form onSubmit={handleSearch} className="flex items-center gap-1">
@@ -336,21 +385,22 @@ export const AdminTechReports: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-text-muted">
-              <thead className="bg-surface-elevated/70 text-text-subtle uppercase text-[10px] font-bold border-b border-surface-border">
+          <>
+            <div className="overflow-x-auto max-h-[750px] overflow-y-auto border border-surface-border rounded-card bg-surface-card shadow-sm">
+              <table className="w-full text-left text-xs text-text-muted border-collapse">
+              <thead className="sticky top-0 z-20 bg-surface-elevated text-text-subtle uppercase text-[10px] font-bold border-b border-surface-border shadow-sm">
                 <tr>
-                  <th className="py-3 px-4">Tiêu đề báo cáo</th>
-                  <th className="py-3 px-3">Chuyên mục</th>
-                  <th className="py-3 px-3">Trạng thái</th>
-                  <th className="py-3 px-3">Tác giả</th>
-                  <th className="py-3 px-3">Lượt đọc & Like</th>
-                  <th className="py-3 px-3">Ngày tạo</th>
-                  <th className="py-3 px-4 text-right">Thao tác</th>
+                  <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border">Tiêu đề báo cáo</th>
+                  <th className="py-3 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border">Chuyên mục</th>
+                  <th className="py-3 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border">Trạng thái</th>
+                  <th className="py-3 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border">Tác giả</th>
+                  <th className="py-3 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border">Lượt đọc & Like</th>
+                  <th className="py-3 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border">Ngày tạo</th>
+                  <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-border/60">
-                {reports.map((rep) => (
+                {reports.slice((page - 1) * pageSize, page * pageSize).map((rep) => (
                   <tr key={rep.id} className="hover:bg-surface-elevated/40 transition-colors">
                     <td className="py-3 px-4 max-w-xs">
                       <p
@@ -366,9 +416,19 @@ export const AdminTechReports: React.FC = () => {
                     </td>
 
                     <td className="py-3 px-3 whitespace-nowrap">
-                      <Badge variant="tech" size="sm">
-                        {rep.category}
-                      </Badge>
+                      {rep.category === 'MONTHLY_TREND' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/25">
+                          📅 Xu hướng Tháng
+                        </span>
+                      ) : rep.category === 'REPOSITORY' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/25">
+                          🔍 Đánh giá Repo
+                        </span>
+                      ) : (
+                        <Badge variant="tech" size="sm">
+                          {rep.category}
+                        </Badge>
+                      )}
                     </td>
 
                     <td className="py-3 px-3 whitespace-nowrap">
@@ -395,8 +455,14 @@ export const AdminTechReports: React.FC = () => {
                     </td>
 
                     <td className="py-3 px-3 whitespace-nowrap font-mono text-[11px]">
-                      <span>👁️ {rep.views_count || 0}</span>
-                      <span className="ml-2.5">❤️ {rep.likes_count || 0}</span>
+                      <span className="inline-flex items-center gap-1">
+                        <AppIcon name="Eye" size={12} className="text-text-muted" />
+                        <span>{rep.views_count || 0}</span>
+                      </span>
+                      <span className="ml-2.5 inline-flex items-center gap-1">
+                        <AppIcon name="Heart" size={12} className="text-status-danger" />
+                        <span>{rep.likes_count || 0}</span>
+                      </span>
                     </td>
 
                     <td className="py-3 px-3 whitespace-nowrap text-text-subtle text-[11px]">
@@ -455,6 +521,20 @@ export const AdminTechReports: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+            <Pagination
+              currentPage={page}
+              totalPages={Math.max(1, Math.ceil(reports.length / pageSize))}
+              totalCount={reports.length}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(sz) => {
+                setPageSize(sz);
+                setPage(1);
+              }}
+              disabled={isLoading}
+            />
+          </>
         )}
       </div>
 
@@ -474,8 +554,16 @@ export const AdminTechReports: React.FC = () => {
                   Tác giả: <strong>{previewReport.author_name}</strong>
                 </span>
               </div>
-              <span className="text-xs font-mono text-text-muted">
-                👁️ {previewReport.views_count} lượt đọc • ❤️ {previewReport.likes_count} thích
+              <span className="text-xs font-mono text-text-muted inline-flex items-center gap-2">
+                <span className="inline-flex items-center gap-1">
+                  <AppIcon name="Eye" size={13} />
+                  <span>{previewReport.views_count} lượt đọc</span>
+                </span>
+                <span>•</span>
+                <span className="inline-flex items-center gap-1">
+                  <AppIcon name="Heart" size={13} className="text-status-danger" />
+                  <span>{previewReport.likes_count} thích</span>
+                </span>
               </span>
             </div>
 
@@ -542,10 +630,10 @@ export const AdminTechReports: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   className="w-full bg-surface-elevated border border-surface-border rounded-btn px-3 py-2 text-xs text-text-main focus:outline-none"
                 >
-                  <option value="TREND">Xu hướng (TREND)</option>
-                  <option value="LANGUAGE">Ngôn ngữ (LANGUAGE)</option>
-                  <option value="FRAMEWORK">Framework (FRAMEWORK)</option>
-                  <option value="DEVOPS">DevOps & Cloud (DEVOPS)</option>
+                  <option value="TREND">Xu hướng</option>
+                  <option value="LANGUAGE">Ngôn ngữ</option>
+                  <option value="FRAMEWORK">Framework</option>
+                  <option value="DEVOPS">DevOps & Cloud</option>
                 </select>
               </div>
 
@@ -556,15 +644,15 @@ export const AdminTechReports: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                   className="w-full bg-surface-elevated border border-surface-border rounded-btn px-3 py-2 text-xs text-text-main focus:outline-none"
                 >
-                  <option value="DRAFT">Lưu bản nháp (DRAFT)</option>
-                  <option value="PUBLISHED">Xuất bản công khai (PUBLISHED)</option>
-                  <option value="ARCHIVED">Lưu trữ ẩn (ARCHIVED)</option>
+                  <option value="DRAFT">Lưu bản nháp</option>
+                  <option value="PUBLISHED">Xuất bản công khai</option>
+                  <option value="ARCHIVED">Lưu trữ ẩn</option>
                 </select>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-text-muted mb-1">Tóm tắt ngắn (Summary)</label>
+              <label className="block text-xs font-semibold text-text-muted mb-1">Tóm tắt ngắn</label>
               <textarea
                 rows={2}
                 value={formData.summary}
@@ -575,7 +663,7 @@ export const AdminTechReports: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-text-muted mb-1">Tags (cách nhau bởi dấu phẩy)</label>
+              <label className="block text-xs font-semibold text-text-muted mb-1">Tags cách nhau bởi dấu phẩy</label>
               <input
                 type="text"
                 value={formData.tags}
@@ -586,7 +674,7 @@ export const AdminTechReports: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-text-muted mb-1">Nội dung báo cáo (Markdown) *</label>
+              <label className="block text-xs font-semibold text-text-muted mb-1">Nội dung báo cáo *</label>
               <textarea
                 rows={10}
                 required
@@ -614,7 +702,7 @@ export const AdminTechReports: React.FC = () => {
         <Modal
           isOpen={true}
           onClose={() => setIsAIModalOpen(false)}
-          title="✨ Khởi tạo Báo cáo Phân tích Tự động bằng AI (LLM)"
+          title="Khởi tạo Báo cáo Phân tích Tự động bằng AI"
           maxWidth="lg"
         >
           <div className="space-y-4">
@@ -625,8 +713,9 @@ export const AdminTechReports: React.FC = () => {
             {/* AI Hot Topics Pills */}
             {aiSuggestions.length > 0 && (
               <div className="space-y-1.5">
-                <span className="text-[11px] font-semibold text-brand-secondary uppercase">
-                  💡 Gợi ý chủ đề nổi bật từ dữ liệu:
+                <span className="text-[11px] font-semibold text-brand-secondary uppercase inline-flex items-center gap-1">
+                  <AppIcon name="Sparkles" size={13} className="text-amber-400" />
+                  <span>Gợi ý chủ đề nổi bật từ dữ liệu:</span>
                 </span>
                 <div className="flex flex-col gap-1.5">
                   {aiSuggestions.map((sug, idx) => (
@@ -637,10 +726,19 @@ export const AdminTechReports: React.FC = () => {
                         setAiTopic(sug.topic);
                         if (sug.category) setAiCategory(sug.category);
                         if (sug.target_tech) setAiTargetTech(sug.target_tech);
+                        if (sug.target_repo) setAiTargetRepo(sug.target_repo);
                       }}
-                      className="text-left text-xs p-2 rounded-btn bg-surface-elevated hover:bg-brand-primary/10 border border-surface-border hover:border-brand-primary/40 transition-colors text-text-main truncate"
+                      className="text-left text-xs p-2 rounded-btn bg-surface-elevated hover:bg-brand-primary/10 border border-surface-border hover:border-brand-primary/40 transition-colors text-text-main truncate flex items-center justify-between"
                     >
-                      • {sug.topic}
+                      <span className="truncate">
+                        {sug.badge && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-brand-primary/20 text-brand-secondary font-bold mr-2">
+                            {sug.badge}
+                          </span>
+                        )}
+                        {sug.topic}
+                      </span>
+                      <AppIcon name="ChevronRight" size={12} className="text-text-subtle shrink-0 ml-1" />
                     </button>
                   ))}
                 </div>
@@ -648,7 +746,7 @@ export const AdminTechReports: React.FC = () => {
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-text-muted mb-1">Chủ đề phân tích (Topic / Prompt) *</label>
+              <label className="block text-xs font-semibold text-text-muted mb-1">Chủ đề phân tích *</label>
               <input
                 type="text"
                 value={aiTopic}
@@ -663,27 +761,95 @@ export const AdminTechReports: React.FC = () => {
                 <label className="block text-xs font-semibold text-text-muted mb-1">Chuyên mục</label>
                 <select
                   value={aiCategory}
-                  onChange={(e) => setAiCategory(e.target.value)}
+                  onChange={(e) => {
+                    const newCat = e.target.value;
+                    setAiCategory(newCat);
+                    if (newCat === 'MONTHLY_TREND') {
+                      const mStr = `Tháng ${new Date().getMonth() + 1}/${new Date().getFullYear()}`;
+                      setAiTopic(`Báo cáo Chuyển dịch Xu hướng Công nghệ & Mã nguồn mở ${mStr}`);
+                    } else if (newCat === 'REPOSITORY') {
+                      const rep = aiTargetRepo || (monitoredRepos[0]?.full_name || 'freeCodeCamp/freeCodeCamp');
+                      setAiTargetRepo(rep);
+                      setAiTopic(`Báo cáo Đánh giá Chuyên sâu Kiến trúc & Sức khỏe Kho mã nguồn ${rep}`);
+                    }
+                  }}
                   className="w-full bg-surface-elevated border border-surface-border rounded-btn px-3 py-2 text-xs text-text-main focus:outline-none"
                 >
-                  <option value="TREND">Xu hướng (TREND)</option>
-                  <option value="LANGUAGE">Ngôn ngữ (LANGUAGE)</option>
-                  <option value="FRAMEWORK">Framework (FRAMEWORK)</option>
-                  <option value="DEVOPS">DevOps & Cloud (DEVOPS)</option>
+                  <option value="TREND">Xu hướng Chung</option>
+                  <option value="MONTHLY_TREND">📅 Báo cáo Xu hướng Tháng</option>
+                  <option value="REPOSITORY">🔍 Đánh giá Kho mã nguồn (Repository)</option>
+                  <option value="LANGUAGE">Ngôn ngữ Lập trình</option>
+                  <option value="FRAMEWORK">Framework & Thư viện</option>
+                  <option value="DEVOPS">DevOps & Cloud Native</option>
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-text-muted mb-1">Công nghệ trọng tâm</label>
-                <input
-                  type="text"
-                  value={aiTargetTech}
-                  onChange={(e) => setAiTargetTech(e.target.value)}
-                  placeholder="VD: Rust, Python, Docker..."
-                  className="w-full bg-surface-elevated border border-surface-border rounded-btn px-3 py-2 text-xs text-text-main focus:outline-none focus:border-brand-primary"
-                />
-              </div>
+              {aiCategory === 'REPOSITORY' ? (
+                <div>
+                  <label className="block text-xs font-semibold text-text-muted mb-1">Nhập Repository (owner/repo)</label>
+                  <input
+                    type="text"
+                    value={aiTargetRepo}
+                    onChange={(e) => {
+                      const rep = e.target.value;
+                      setAiTargetRepo(rep);
+                      setAiTopic(`Báo cáo Đánh giá Chuyên sâu Kiến trúc & Sức khỏe Kho mã nguồn ${rep}`);
+                    }}
+                    placeholder="VD: facebook/react hoặc morluto/rea..."
+                    className="w-full bg-surface-elevated border border-surface-border rounded-btn px-3 py-2 text-xs text-text-main focus:outline-none focus:border-brand-primary font-mono"
+                  />
+                </div>
+              ) : aiCategory === 'MONTHLY_TREND' ? (
+                <div>
+                  <label className="block text-xs font-semibold text-text-muted mb-1">Kỳ tháng báo cáo</label>
+                  <input
+                    type="text"
+                    value={aiMonthPeriod}
+                    onChange={(e) => {
+                      const p = e.target.value;
+                      setAiMonthPeriod(p);
+                      setAiTopic(`Báo cáo Chuyển dịch Xu hướng Công nghệ & Mã nguồn mở ${p}`);
+                    }}
+                    placeholder="VD: Tháng 11/2026..."
+                    className="w-full bg-surface-elevated border border-surface-border rounded-btn px-3 py-2 text-xs text-text-main focus:outline-none focus:border-brand-primary"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-semibold text-text-muted mb-1">Công nghệ trọng tâm</label>
+                  <input
+                    type="text"
+                    value={aiTargetTech}
+                    onChange={(e) => setAiTargetTech(e.target.value)}
+                    placeholder="VD: Rust, Python, Docker..."
+                    className="w-full bg-surface-elevated border border-surface-border rounded-btn px-3 py-2 text-xs text-text-main focus:outline-none focus:border-brand-primary"
+                  />
+                </div>
+              )}
             </div>
+
+            {aiCategory === 'REPOSITORY' && monitoredRepos.length > 0 && (
+              <div>
+                <label className="block text-xs font-semibold text-text-muted mb-1">
+                  Hoặc chọn nhanh từ danh sách Kho mã nguồn đang giám sát:
+                </label>
+                <select
+                  value={aiTargetRepo}
+                  onChange={(e) => {
+                    const rep = e.target.value;
+                    setAiTargetRepo(rep);
+                    setAiTopic(`Báo cáo Đánh giá Chuyên sâu Kiến trúc & Sức khỏe Kho mã nguồn ${rep}`);
+                  }}
+                  className="w-full bg-surface-elevated border border-surface-border rounded-btn px-3 py-2 text-xs text-text-main focus:outline-none"
+                >
+                  {monitoredRepos.map((r, idx) => (
+                    <option key={idx} value={r.full_name}>
+                      {r.full_name} ({r.stars?.toLocaleString()} ⭐ — {r.primary_language} — Health: {r.health_score || 85}/100)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-semibold text-text-muted mb-1">Trạng thái sau khi sinh</label>
@@ -692,8 +858,8 @@ export const AdminTechReports: React.FC = () => {
                 onChange={(e) => setAiStatus(e.target.value)}
                 className="w-full bg-surface-elevated border border-surface-border rounded-btn px-3 py-2 text-xs text-text-main focus:outline-none"
               >
-                <option value="DRAFT">Lưu bản nháp (DRAFT - Khuyến nghị để duyệt)</option>
-                <option value="PUBLISHED">Xuất bản công khai ngay (PUBLISHED)</option>
+                <option value="DRAFT">Lưu bản nháp - Khuyến nghị để duyệt</option>
+                <option value="PUBLISHED">Xuất bản công khai ngay</option>
               </select>
             </div>
 

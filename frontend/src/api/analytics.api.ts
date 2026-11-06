@@ -165,11 +165,19 @@ export const analyticsApi = {
     topic?: string;
     category?: string;
     target_tech?: string;
+    target_repo?: string;
+    month_period?: string;
     status?: string;
     save_to_db?: boolean;
     include_live_metrics?: boolean;
   }): Promise<any> => {
     return apiClient.post('/crawler/api/v1/admin/reports/ai-generate', payload);
+  },
+
+  /** Lấy danh sách repository đang theo dõi để chọn đánh giá */
+  getMonitoredRepos: async (limit = 25): Promise<any[]> => {
+    const res = await apiClient.get<any>('/crawler/api/v1/admin/reports/monitored-repos', { params: { limit } });
+    return res.data || res;
   },
 
   /** Lấy danh sách gợi ý chủ đề AI hot */
@@ -212,6 +220,26 @@ export const analyticsApi = {
   /** Lấy dữ liệu 5 trục Radar của một hệ sinh thái công nghệ (UC-12) */
   getTechRadar: async (techName: string): Promise<any> => {
     return apiClient.get(`/crawler/analytics/tech-radar/${encodeURIComponent(techName)}`);
+  },
+
+  /** Dự báo chuỗi thời gian xu hướng công nghệ tương lai qua ARIMA & Exponential Smoothing (SCR-10) */
+  getTechnologyForecast: async (
+    technology: string,
+    steps: number = 3,
+    metric: 'health_score' | 'popularity_score' | 'growth_momentum_score' = 'health_score'
+  ): Promise<any> => {
+    return apiClient.get('/crawler/analytics/forecast', {
+      params: { technology, steps, metric },
+    });
+  },
+
+  /** Gửi chuỗi số liệu tùy chỉnh để dự báo qua mô hình ARIMA Core ML */
+  forecastCustomSeries: async (payload: {
+    technology: string;
+    history_records: Array<{ timestamp?: string; value: number }>;
+    steps?: number;
+  }): Promise<any> => {
+    return apiClient.post('/crawler/analytics/forecast', payload);
   },
 
   /** So sánh đối đầu 2 hệ sinh thái công nghệ trên 5 trục Radar (UC-12) */

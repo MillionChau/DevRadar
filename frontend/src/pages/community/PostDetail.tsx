@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
@@ -9,13 +9,15 @@ import EmptyState from '../../components/common/EmptyState';
 import MarkdownRenderer from '../../components/common/MarkdownRenderer';
 import { Tooltip } from '../../components/common/Tooltip';
 import { Comment, Post } from '../../types';
-import { communityApi } from '../../api';
+import { communityApi, authApi } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { getSafeAvatarUrl } from '../../utils/avatarHelper';
 
 export const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
   const { success, warning, error, info } = useToast();
   const [post, setPost] = useState<Post | null>(null);
   const [isLoadingPost, setIsLoadingPost] = useState<boolean>(true);
@@ -32,6 +34,15 @@ export const PostDetail: React.FC = () => {
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [copiedMarkdown, setCopiedMarkdown] = useState(false);
+  const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
+  const [visibleCommentsCount, setVisibleCommentsCount] = useState<number>(10);
+
+  const toggleReplies = (commentId: string) => {
+    setExpandedReplies((prev) => ({
+      ...prev,
+      [commentId]: !prev[commentId],
+    }));
+  };
 
   const headings = React.useMemo(() => {
     if (!post?.content) return [];
@@ -96,10 +107,12 @@ export const PostDetail: React.FC = () => {
             authorId: data.authorId || data.createdBy,
             author: {
               id: data.authorId,
-              displayName: data.authorName || 'Thành viên DevRadar',
-              userName: data.authorUserName || 'developer',
-              avatarUrl: data.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100',
-              reputationPoints: 1000,
+              displayName: data.authorUsername || data.authorName || 'Thành viên DevRadar',
+              userName: data.authorUsername || data.authorUserName || 'developer',
+              avatarUrl: getSafeAvatarUrl(data.authorAvatarUrl || data.authorAvatar, data.authorUsername || data.authorName, 'Member'),
+              reputationPoints: data.authorReputationPoints ?? 0,
+              tierTitle: data.authorTierTitle || 'Code Initiate',
+              tierBadge: (data.authorTierBadge || 'Tân thủ').replace(/^[^\w\s\u00C0-\u1EF9]+/u, '').trim(),
             },
             techZoneId: data.techZoneId,
             techZoneName: data.techZoneName || 'Công nghệ chung',
@@ -116,6 +129,34 @@ export const PostDetail: React.FC = () => {
             createdAt: data.createdDate ? new Date(data.createdDate).toLocaleDateString('vi-VN') : '',
           };
           setPost(p);
+
+          // Làm giàu avatar & thông tin tác giả thực tế từ authApi hoặc current user context
+          const currentAuthorId = data.authorId || data.createdBy;
+          if (currentAuthorId) {
+            if (user && user.id === currentAuthorId && user.avatarUrl) {
+              setPost((prev) => prev ? {
+                ...prev,
+                author: {
+                  ...prev.author,
+                  avatarUrl: user.avatarUrl || prev.author.avatarUrl,
+                  displayName: user.displayName || user.fullName || prev.author.displayName,
+                }
+              } : null);
+            } else {
+              authApi.getUserPublicProfile(currentAuthorId).then((prof) => {
+                if (prof && prof.avatarUrl) {
+                  setPost((prev) => prev ? {
+                    ...prev,
+                    author: {
+                      ...prev.author,
+                      avatarUrl: prof.avatarUrl || prev.author.avatarUrl,
+                      displayName: prof.fullName || prof.userName || prev.author.displayName,
+                    }
+                  } : null);
+                }
+              }).catch(() => {});
+            }
+          }
           setLiked(p.isLiked || false);
           setLikeCount(p.likeCount);
           setBookmarked(p.isBookmarked || false);
@@ -144,42 +185,83 @@ export const PostDetail: React.FC = () => {
     // Tải danh sách bình luận thực tế
     communityApi
       .getComments(id)
-      .then((items: any[]) => {
-        if (Array.isArray(items) && items.length > 0) {
-          const mapped: Comment[] = items
-            .filter((c) => !c.parentCommentId)
-            .map((c) => ({
-              id: c.id,
-              postId: c.postId,
-              authorId: c.authorId,
-              author: {
-                id: c.authorId,
-                displayName: c.authorName || 'DevRadar Member',
-                userName: c.authorUserName || 'developer',
-                avatarUrl: c.authorAvatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100',
-              },
-              content: c.content || '',
-              likeCount: c.likesCount ?? 0,
-              createdAt: c.createdDate ? new Date(c.createdDate).toLocaleDateString('vi-VN') : 'Vừa xong',
-              replies: items
-                .filter((r) => r.parentCommentId === c.id)
-                .map((r) => ({
-                  id: r.id,
-                  postId: r.postId,
-                  parentId: r.parentCommentId,
-                  authorId: r.authorId,
-                  author: {
-                    id: r.authorId,
-                    displayName: r.authorName || 'DevRadar Member',
-                    userName: r.authorUserName || 'developer',
-                    avatarUrl: r.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100',
-                  },
-                  content: r.content || '',
-                  likeCount: r.likesCount ?? 0,
-                  createdAt: r.createdDate ? new Date(r.createdDate).toLocaleDateString('vi-VN') : 'Vừa xong',
-                })),
-            }));
+      .then(async (rawItems: any[]) => {
+        // Phía Community: Tuyệt đối không hiển thị bất kỳ bình luận vi phạm hoặc bị ẩn nào (status != 1 hoặc isApproved === 0)
+        const items = Array.isArray(rawItems)
+          ? rawItems.filter((c) => (c.status === null || c.status === undefined || c.status === 1) && (c.isApproved === null || c.isApproved === undefined || c.isApproved === 1))
+          : [];
+
+        if (items.length > 0) {
+          const mapDtoToComment = (c: any): Comment => ({
+            id: c.id,
+            postId: c.postId,
+            authorId: c.authorId || c.createdBy,
+            author: {
+              id: c.authorId || c.createdBy,
+              displayName: c.authorName || c.authorUsername || (c.authorId ? `Dev_${c.authorId.substring(0, 6)}` : 'DevRadar Member'),
+              userName: c.authorUsername || c.authorUserName || 'developer',
+              avatarUrl: getSafeAvatarUrl(c.authorAvatarUrl || c.authorAvatar, c.authorUsername || c.authorName || c.authorId, 'Member'),
+            },
+            content: c.content || '',
+            likeCount: c.likesCount ?? 0,
+            isLiked: c.isLikedByViewer ?? false,
+            createdAt: c.createdDate ? new Date(c.createdDate).toLocaleDateString('vi-VN') : 'Vừa xong',
+            replies: (Array.isArray(c.replies) && c.replies.length > 0
+              ? c.replies
+              : items.filter((r) => r.parentCommentId === c.id)
+            )
+              .filter((r: any) => (r.status === null || r.status === undefined || r.status === 1) && (r.isApproved === null || r.isApproved === undefined || r.isApproved === 1))
+              .map(mapDtoToComment),
+          });
+
+          const rootComments = items.filter((c) => !c.parentCommentId);
+          const mapped: Comment[] = rootComments.map(mapDtoToComment);
           setComments(mapped);
+
+          // Làm giàu thông tin tác giả thực tế từ authApi (Quản trị viên DevRadar, Châu Hoàng Tấn, v.v.)
+          try {
+            const authorIds = Array.from(new Set(
+              items.map((c) => c.authorId || c.createdBy).filter(Boolean)
+            ));
+            const profileMap: Record<string, { displayName: string; userName: string; avatarUrl?: string }> = {};
+            await Promise.allSettled(
+              authorIds.map(async (aId) => {
+                try {
+                  const prof = await authApi.getUserPublicProfile(aId);
+                  if (prof) {
+                    profileMap[aId] = {
+                      displayName: prof.fullName || prof.userName || `Dev_${aId.substring(0, 6)}`,
+                      userName: prof.userName || 'developer',
+                      avatarUrl: prof.avatarUrl,
+                    };
+                  }
+                } catch {
+                  // Fallback
+                }
+              })
+            );
+
+            if (Object.keys(profileMap).length > 0) {
+              const enrichComment = (c: Comment): Comment => {
+                const authorInfo = c.authorId ? profileMap[c.authorId] : undefined;
+                return {
+                  ...c,
+                  author: authorInfo
+                    ? {
+                        ...c.author,
+                        displayName: authorInfo.displayName,
+                        userName: authorInfo.userName,
+                        avatarUrl: authorInfo.avatarUrl || c.author.avatarUrl,
+                      }
+                    : c.author,
+                  replies: c.replies?.map(enrichComment),
+                };
+              };
+              setComments((prev) => prev.map(enrichComment));
+            }
+          } catch (profileErr) {
+            console.warn('Could not enrich comment author profiles:', profileErr);
+          }
         } else {
           setComments([]);
         }
@@ -194,6 +276,11 @@ export const PostDetail: React.FC = () => {
   }, [id]);
 
   const handleToggleLikePost = async () => {
+    if (!isAuthenticated) {
+      warning('Vui lòng đăng nhập để thả tim bài viết.', 'Yêu cầu đăng nhập');
+      navigate('/login');
+      return;
+    }
     const nextLiked = !liked;
     setLiked(nextLiked);
     setLikeCount((prev) => (nextLiked ? prev + 1 : Math.max(0, prev - 1)));
@@ -212,6 +299,11 @@ export const PostDetail: React.FC = () => {
   };
 
   const handleToggleBookmarkPost = async () => {
+    if (!isAuthenticated) {
+      warning('Vui lòng đăng nhập để lưu bài viết vào bộ sưu tập cá nhân.', 'Yêu cầu đăng nhập');
+      navigate('/login');
+      return;
+    }
     const nextBookmarked = !bookmarked;
     setBookmarked(nextBookmarked);
     setBookmarkCount((prev) => (nextBookmarked ? prev + 1 : Math.max(0, prev - 1)));
@@ -230,6 +322,11 @@ export const PostDetail: React.FC = () => {
   };
 
   const handleToggleLikeComment = (commentId: string) => {
+    if (!isAuthenticated) {
+      warning('Vui lòng đăng nhập để thích bình luận.', 'Yêu cầu đăng nhập');
+      navigate('/login');
+      return;
+    }
     setComments((prevComments) =>
       prevComments.map((comment) => {
         if (comment.id === commentId) {
@@ -263,6 +360,11 @@ export const PostDetail: React.FC = () => {
 
   const handleSendComment = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAuthenticated) {
+      warning('Vui lòng đăng nhập để viết bình luận.', 'Yêu cầu đăng nhập');
+      navigate('/login');
+      return;
+    }
     if (!commentText.trim()) return;
     setIsSendingComment(true);
 
@@ -275,7 +377,7 @@ export const PostDetail: React.FC = () => {
         id: user?.id,
         displayName: user?.displayName || user?.userName || 'Thành viên DevRadar',
         userName: user?.userName || 'developer',
-        avatarUrl: user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100',
+        avatarUrl: getSafeAvatarUrl(user?.avatarUrl, user?.userName || user?.displayName, user?.role),
       },
       content: commentText,
       likeCount: 0,
@@ -304,7 +406,10 @@ export const PostDetail: React.FC = () => {
 
   const handleSendReply = async (parentCommentId: string, replyToUserName?: string) => {
     if (!replyText.trim()) return;
-    const finalContent = replyToUserName ? `@${replyToUserName} ${replyText.trim()}` : replyText.trim();
+    const trimmed = replyText.trim();
+    const finalContent = trimmed.startsWith('@')
+      ? trimmed
+      : (replyToUserName ? `@${replyToUserName} ${trimmed}` : trimmed);
     const tempId = `c-${Date.now()}`;
     const newReply: Comment = {
       id: tempId,
@@ -315,7 +420,7 @@ export const PostDetail: React.FC = () => {
         id: user?.id,
         displayName: user?.displayName || user?.userName || 'Thành viên DevRadar',
         userName: user?.userName || 'developer',
-        avatarUrl: user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100',
+        avatarUrl: getSafeAvatarUrl(user?.avatarUrl, user?.userName || user?.displayName, user?.role),
       },
       content: finalContent,
       likeCount: 0,
@@ -333,6 +438,11 @@ export const PostDetail: React.FC = () => {
         return comment;
       })
     );
+    // Tự động mở rộng nhánh reply vừa trả lời để người dùng nhìn thấy ngay
+    setExpandedReplies((prev) => ({
+      ...prev,
+      [parentCommentId]: true,
+    }));
     setReplyText('');
     setReplyingToId(null);
 
@@ -390,7 +500,7 @@ export const PostDetail: React.FC = () => {
           <div className="flex items-center justify-between pb-4 border-b border-surface-border">
             <div className="flex items-center gap-3">
               <img
-                src={post.author.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100"}
+                src={getSafeAvatarUrl(post.author.avatarUrl, post.author.userName || post.author.displayName, 'Member')}
                 alt={post.author.displayName}
                 className="w-10 h-10 rounded-full border border-surface-border object-cover"
               />
@@ -399,7 +509,13 @@ export const PostDetail: React.FC = () => {
                   <Link to={`/profile/${post.author.id || post.author.userName}`} className="text-sm font-bold text-text-main hover:text-brand-primary transition-colors">
                     {post.author.displayName || post.author.userName}
                   </Link>
-                  <Badge variant="reputation" size="sm">⚡ {post.author.reputationPoints || 1000} Rep</Badge>
+                  <Badge variant="tech" size="sm" icon="Star" className="font-medium text-[11px] py-0 px-2 bg-brand-primary/10 text-brand-secondary border-brand-primary/20">
+                    {(post.author.tierBadge || 'Tân thủ').replace(/^[^\w\s\u00C0-\u1EF9]+/u, '').trim()}
+                  </Badge>
+                  <span className="text-xs font-mono font-medium text-text-subtle flex items-center gap-1" title="Điểm uy tín & đóng góp">
+                    <AppIcon name="Zap" size={13} className="text-status-warning" />
+                    <span>{(post.author.reputationPoints ?? 0).toLocaleString()} Điểm</span>
+                  </span>
                 </div>
                 <span className="text-xs text-text-subtle">
                   Xuất bản {post.createdAt || "Gần đây"} • {post.techZoneName || "Công nghệ chung"}
@@ -508,7 +624,7 @@ export const PostDetail: React.FC = () => {
           <div className="flex flex-col gap-6 pt-6 border-t border-surface-border">
             <h3 className="text-base font-bold text-text-main flex items-center gap-2">
               <AppIcon name="message" size={18} />
-              <span>Thảo luận & Bình luận ({comments.length})</span>
+              <span>Thảo luận & Bình luận: {comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0)}</span>
             </h3>
 
             {/* Comment Form */}
@@ -546,7 +662,7 @@ export const PostDetail: React.FC = () => {
               />
             ) : (
               <div className="flex flex-col gap-4">
-                {comments.map((comment) => (
+                {comments.slice(0, visibleCommentsCount).map((comment) => (
                   <div key={comment.id} className="flex flex-col gap-3 p-4 bg-surface-elevated/40 border border-surface-border rounded-btn">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
@@ -588,7 +704,8 @@ export const PostDetail: React.FC = () => {
                               setReplyingToId(null);
                             } else {
                               setReplyingToId(comment.id);
-                              setReplyText('');
+                              const targetUser = comment.author.userName || comment.author.displayName || 'developer';
+                              setReplyText(`@${targetUser} `);
                             }
                           }}
                           className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs text-text-muted hover:text-text-main hover:bg-surface-elevated transition-colors"
@@ -640,92 +757,138 @@ export const PostDetail: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Replies if any */}
-                    {comment.replies && comment.replies.map((reply) => (
-                      <div key={reply.id} className="ml-6 pl-4 border-l-2 border-brand-primary/40 flex flex-col gap-2 pt-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-brand-secondary">{reply.author.displayName || reply.author.userName || 'Thành viên'}</span>
-                          <span className="text-[10px] text-text-subtle">{reply.createdAt}</span>
-                        </div>
-                        <div className="text-xs text-text-muted leading-relaxed">
-                          <MarkdownRenderer content={reply.content} isComment={true} />
-                        </div>
+                    {/* Collapsible Replies Section */}
+                    {comment.replies && comment.replies.length > 0 && (
+                      <div className="mt-1 pt-1 border-t border-surface-border/40">
+                        <button
+                          type="button"
+                          onClick={() => toggleReplies(comment.id)}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-secondary hover:text-brand-light transition-colors py-1 group"
+                        >
+                          <AppIcon
+                            name={expandedReplies[comment.id] ? "chevronUp" : "chevronDown"}
+                            size={14}
+                            className="transition-transform group-hover:scale-110"
+                          />
+                          <span>
+                            {expandedReplies[comment.id]
+                              ? 'Ẩn câu trả lời'
+                              : `Xem ${comment.replies.length} câu trả lời`}
+                          </span>
+                        </button>
 
-                        {/* Reply Actions: Like & Reply */}
-                        <div className="flex items-center gap-2 pt-1">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleLikeComment(reply.id)}
-                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] transition-colors ${
-                              reply.isLiked
-                                ? 'text-status-danger font-semibold bg-status-danger/10'
-                                : 'text-text-muted hover:text-text-main hover:bg-surface-elevated'
-                            }`}
-                          >
-                            <AppIcon name="heart" size={12} className={reply.isLiked ? 'fill-current' : ''} />
-                            <span>{reply.likeCount || 0}</span>
-                          </button>
+                        {expandedReplies[comment.id] && (
+                          <div className="flex flex-col gap-3 mt-2 pl-3 border-l-2 border-brand-primary/30">
+                            {comment.replies.map((reply) => (
+                              <div key={reply.id} className="flex flex-col gap-2 pt-1">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-5 h-5 rounded-full bg-brand-primary/20 text-brand-secondary flex items-center justify-center font-bold text-[10px]">
+                                    {(reply.author.displayName || reply.author.userName || 'U').charAt(0)}
+                                  </div>
+                                  <span className="text-xs font-bold text-brand-secondary">
+                                    {reply.author.displayName || reply.author.userName || 'Thành viên'}
+                                  </span>
+                                  <span className="text-[10px] text-text-subtle">{reply.createdAt}</span>
+                                </div>
+                                <div className="text-xs text-text-muted leading-relaxed pl-7">
+                                  <MarkdownRenderer content={reply.content} isComment={true} />
+                                </div>
 
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (replyingToId === reply.id) {
-                                setReplyingToId(null);
-                              } else {
-                                setReplyingToId(reply.id);
-                                setReplyText('');
-                              }
-                            }}
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] text-text-muted hover:text-text-main hover:bg-surface-elevated transition-colors"
-                          >
-                            <AppIcon name="reply" size={12} />
-                            <span>Trả lời</span>
-                          </button>
-                        </div>
+                                {/* Reply Actions: Like & Reply */}
+                                <div className="flex items-center gap-2 pt-1 pl-7">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleLikeComment(reply.id)}
+                                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] transition-colors ${
+                                      reply.isLiked
+                                        ? 'text-status-danger font-semibold bg-status-danger/10'
+                                        : 'text-text-muted hover:text-text-main hover:bg-surface-elevated'
+                                    }`}
+                                  >
+                                    <AppIcon name="heart" size={12} className={reply.isLiked ? 'fill-current' : ''} />
+                                    <span>{reply.likeCount || 0}</span>
+                                  </button>
 
-                        {/* Inline Reply Box for nested reply */}
-                        {replyingToId === reply.id && (
-                          <div className="flex flex-col gap-2 mt-1 p-3 bg-surface-ground/60 border border-surface-border rounded-btn">
-                            <div className="flex items-center justify-between text-xs text-text-muted">
-                              <span>Trả lời <strong>{reply.author.displayName || reply.author.userName}</strong>:</span>
-                              <button
-                                type="button"
-                                onClick={() => setReplyingToId(null)}
-                                className="hover:text-text-main"
-                              >
-                                Hủy
-                              </button>
-                            </div>
-                            <Textarea
-                              placeholder={`Trả lời @${reply.author.displayName || reply.author.userName}...`}
-                              value={replyText}
-                              onChange={(e) => setReplyText(e.target.value)}
-                              rows={2}
-                              className="text-xs"
-                            />
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setReplyingToId(null)}
-                              >
-                                Hủy
-                              </Button>
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                icon="send"
-                                onClick={() => handleSendReply(comment.id, reply.author.userName || reply.author.displayName)}
-                              >
-                                Gửi phản hồi
-                              </Button>
-                            </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (replyingToId === reply.id) {
+                                        setReplyingToId(null);
+                                      } else {
+                                        setReplyingToId(reply.id);
+                                        const targetUser = reply.author.userName || reply.author.displayName || 'developer';
+                                        setReplyText(`@${targetUser} `);
+                                      }
+                                    }}
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] text-text-muted hover:text-text-main hover:bg-surface-elevated transition-colors"
+                                  >
+                                    <AppIcon name="reply" size={12} />
+                                    <span>Trả lời</span>
+                                  </button>
+                                </div>
+
+                                {/* Inline Reply Box for nested reply */}
+                                {replyingToId === reply.id && (
+                                  <div className="flex flex-col gap-2 mt-1 ml-7 p-3 bg-surface-ground/60 border border-surface-border rounded-btn">
+                                    <div className="flex items-center justify-between text-xs text-text-muted">
+                                      <span>Trả lời <strong>{reply.author.displayName || reply.author.userName}</strong>:</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setReplyingToId(null)}
+                                        className="hover:text-text-main"
+                                      >
+                                        Hủy
+                                      </button>
+                                    </div>
+                                    <Textarea
+                                      placeholder={`Trả lời @${reply.author.displayName || reply.author.userName}...`}
+                                      value={replyText}
+                                      onChange={(e) => setReplyText(e.target.value)}
+                                      rows={2}
+                                      className="text-xs"
+                                    />
+                                    <div className="flex justify-end gap-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setReplyingToId(null)}
+                                      >
+                                        Hủy
+                                      </Button>
+                                      <Button
+                                        variant="primary"
+                                        size="sm"
+                                        icon="send"
+                                        onClick={() => handleSendReply(comment.id, reply.author.userName || reply.author.displayName)}
+                                      >
+                                        Gửi phản hồi
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
-                    ))}
+                    )}
                   </div>
                 ))}
+
+                {/* Progressive Comments Load More */}
+                {comments.length > visibleCommentsCount && (
+                  <div className="flex justify-center pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon="chevronDown"
+                      onClick={() => setVisibleCommentsCount((prev) => prev + 10)}
+                      tooltip="Tải thêm các bình luận thảo luận"
+                    >
+                      Xem thêm {Math.min(10, comments.length - visibleCommentsCount)} bình luận khác (còn {comments.length - visibleCommentsCount})
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -740,7 +903,7 @@ export const PostDetail: React.FC = () => {
           </h3>
           <div className="flex items-center gap-3">
             <img
-              src={post.author.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100"}
+              src={getSafeAvatarUrl(post.author.avatarUrl, post.author.userName || post.author.displayName, 'Member')}
               alt={post.author.displayName}
               className="w-12 h-12 rounded-full border border-surface-border object-cover"
             />
@@ -748,15 +911,23 @@ export const PostDetail: React.FC = () => {
               <Link to={`/profile/${post.author.id || post.author.userName}`} className="text-sm font-bold text-text-main hover:text-brand-primary transition-colors">
                 {post.author.displayName || post.author.userName}
               </Link>
-              <p className="text-xs text-text-muted">@{post.author.userName}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <p className="text-xs text-text-muted">@{post.author.userName}</p>
+                <Badge variant="tech" size="sm" icon="Star" className="text-[10px] py-0 px-1.5">
+                  {(post.author.tierBadge || 'Tân thủ').replace(/^[^\w\s\u00C0-\u1EF9]+/u, '').trim()}
+                </Badge>
+              </div>
             </div>
           </div>
           <p className="text-xs text-text-muted leading-relaxed">
-            Thành viên tích cực cộng đồng kỹ thuật số DevRadar.
+            {post.author.tierTitle || 'Code Initiate'} • Thành viên tích cực cộng đồng kỹ thuật số DevRadar.
           </p>
           <div className="pt-2 border-t border-surface-border flex justify-between text-xs text-text-subtle">
             <span>{post.likeCount} Lượt thích</span>
-            <span>⚡ {post.author.reputationPoints || 1000} Điểm Rep</span>
+            <span className="font-mono font-semibold text-brand-secondary inline-flex items-center gap-1">
+              <AppIcon name="Zap" size={13} className="text-amber-400" />
+              <span>{(post.author.reputationPoints ?? 0).toLocaleString()} Điểm</span>
+            </span>
           </div>
         </Card>
 

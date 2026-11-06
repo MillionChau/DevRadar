@@ -8,19 +8,26 @@ export default {
   theme: {
     extend: {
       colors: {
+        'primary-blue': '#2563EB',
+        'secondary-cyan': '#0284C7',
+        'accent-danger': '#EF4444',
+        'accent-warning': '#F59E0B',
+        'accent-success': '#10B981',
+        'border-default': 'rgb(var(--color-border) / <alpha-value>)',
         brand: {
           primary: '#2563EB',
           hover: '#1D4ED8',
           light: '#3B82F6',
-          secondary: '#38BDF8',
+          secondary: 'rgb(var(--color-brand-secondary) / <alpha-value>)',
           accent: '#818CF8',
         },
         surface: {
-          bg: '#090D16',
-          card: '#0F172A',
-          elevated: '#1E293B',
-          border: '#334155',
-          muted: '#475569',
+          DEFAULT: 'rgb(var(--color-card) / <alpha-value>)',
+          bg: 'rgb(var(--color-bg) / <alpha-value>)',
+          card: 'rgb(var(--color-card) / <alpha-value>)',
+          elevated: 'rgb(var(--color-elevated) / <alpha-value>)',
+          border: 'rgb(var(--color-border) / <alpha-value>)',
+          muted: 'rgb(var(--color-muted) / <alpha-value>)',
         },
         status: {
           success: '#10B981',
@@ -29,9 +36,12 @@ export default {
           info: '#0284C7',
         },
         text: {
-          main: '#F8FAFC',
-          muted: '#94A3B8',
-          subtle: '#64748B',
+          main: 'rgb(var(--color-text-main) / <alpha-value>)',
+          muted: 'rgb(var(--color-text-muted) / <alpha-value>)',
+          subtle: 'rgb(var(--color-text-subtle) / <alpha-value>)',
+          primary: 'rgb(var(--color-text-main) / <alpha-value>)',
+          secondary: 'rgb(var(--color-text-muted) / <alpha-value>)',
+          tertiary: 'rgb(var(--color-text-subtle) / <alpha-value>)',
         }
       },
       fontFamily: {

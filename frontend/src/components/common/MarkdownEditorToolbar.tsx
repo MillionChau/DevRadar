@@ -153,7 +153,7 @@ export const MarkdownEditorToolbar: React.FC<MarkdownEditorToolbarProps> = ({
           type="button"
           onClick={() => onInsert('\n- ', '\n', 'Mục danh sách')}
           className="p-1.5 rounded hover:bg-surface-elevated hover:text-text-main text-xs transition-colors"
-          title="Danh sách gạch đầu dòng (- Item)"
+          title="Danh sách gạch đầu dòng"
         >
           • List
         </button>
@@ -163,7 +163,7 @@ export const MarkdownEditorToolbar: React.FC<MarkdownEditorToolbarProps> = ({
           type="button"
           onClick={() => onInsert('\n1. ', '\n', 'Bước thực hiện 1')}
           className="p-1.5 rounded hover:bg-surface-elevated hover:text-text-main text-xs transition-colors"
-          title="Danh sách đánh số (1. Item)"
+          title="Danh sách đánh số"
         >
           1. List
         </button>
@@ -173,7 +173,7 @@ export const MarkdownEditorToolbar: React.FC<MarkdownEditorToolbarProps> = ({
           type="button"
           onClick={() => onInsert('[', '](https://example.com)', 'Tiêu đề liên kết')}
           className="p-1.5 rounded hover:bg-surface-elevated hover:text-text-main text-xs transition-colors"
-          title="Chèn liên kết ([text](url))"
+          title="Chèn liên kết"
         >
           🔗 Link
         </button>
@@ -192,10 +192,11 @@ export const MarkdownEditorToolbar: React.FC<MarkdownEditorToolbarProps> = ({
         <button
           type="button"
           onClick={() => onInsert('\n> [!NOTE]\n> Lưu ý kỹ thuật quan trọng ở đây...\n\n')}
-          className="px-2 py-0.5 rounded hover:bg-blue-500/20 text-blue-400 text-[11px] font-semibold border border-blue-500/30 transition-colors"
+          className="px-2 py-0.5 rounded hover:bg-blue-500/20 text-blue-400 text-[11px] font-semibold border border-blue-500/30 transition-colors inline-flex items-center gap-1"
           title="Hộp ghi chú cảnh báo chuẩn GitHub (> [!NOTE])"
         >
-          💡 Note
+          <AppIcon name="Info" size={12} />
+          <span>Note</span>
         </button>
       </div>
 

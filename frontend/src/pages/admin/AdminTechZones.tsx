@@ -4,12 +4,14 @@ import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { Modal } from '../../components/common/Modal';
 import { AppIcon } from '../../components/common/Icon';
+import { useConfirm } from '../../context/ConfirmContext';
 import { TechZone } from '../../types';
 
 import { communityApi, adminApi } from '../../api';
 import { recordActivity } from '../../utils/activityLogger';
 
 export const AdminTechZones: React.FC = () => {
+  const { confirm } = useConfirm();
   const [zones, setZones] = useState<TechZone[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -129,23 +131,30 @@ export const AdminTechZones: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     const targetZone = zones.find(z => z.id === id);
-    if (confirm('Bạn có chắc chắn muốn xóa danh mục TechZone này?')) {
-      setZones(prev => prev.filter(z => z.id !== id));
-      try {
-        await adminApi.deleteTechZone(id);
-        recordActivity({
-          action: 'DELETE_TECHZONE',
-          action_label: `Xóa danh mục TechZone: ${targetZone?.name || id}`,
-          category: 'CONTENT',
-          target_type: 'TECHZONE',
-          target_name: targetZone?.name || id,
-          target_id: id,
-          status: 'SUCCESS'
-        });
-        fetchTechZones();
-      } catch (err) {
-        console.warn('Could not delete techzone on server:', err);
-      }
+    const ok = await confirm({
+      title: 'Xóa danh mục TechZone',
+      message: `Bạn có chắc chắn muốn xóa danh mục TechZone "${targetZone?.name || id}"? Các bài viết trong chuyên mục này sẽ được chuyển về nhóm General.`,
+      confirmText: 'Xóa TechZone',
+      cancelText: 'Hủy bỏ',
+      variant: 'danger',
+    });
+    if (!ok) return;
+
+    setZones(prev => prev.filter(z => z.id !== id));
+    try {
+      await adminApi.deleteTechZone(id);
+      recordActivity({
+        action: 'DELETE_TECHZONE',
+        action_label: `Xóa danh mục TechZone: ${targetZone?.name || id}`,
+        category: 'CONTENT',
+        target_type: 'TECHZONE',
+        target_name: targetZone?.name || id,
+        target_id: id,
+        status: 'SUCCESS'
+      });
+      fetchTechZones();
+    } catch (err) {
+      console.warn('Could not delete techzone on server:', err);
     }
   };
 
@@ -260,7 +269,7 @@ export const AdminTechZones: React.FC = () => {
             required
           />
           <Input
-            label="Slug (URL identifier)"
+            label="Slug"
             placeholder="e.g. distributed-databases"
             value={formSlug}
             onChange={e => setFormSlug(e.target.value)}

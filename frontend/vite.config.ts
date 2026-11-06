@@ -20,6 +20,18 @@ export default defineConfig({
       '/hubs': {
         target: 'http://localhost:5000',
         ws: true,
+      },
+      '/devradar-avatars': {
+        target: 'http://localhost:9000',
+        changeOrigin: true,
+      },
+      '/devradar-covers': {
+        target: 'http://localhost:9000',
+        changeOrigin: true,
+      },
+      '/devradar-models': {
+        target: 'http://localhost:9000',
+        changeOrigin: true,
       }
     }
   }

@@ -7,13 +7,17 @@ import { AppIcon } from '../../components/common/Icon';
 import RadarChart from '../../components/common/RadarChart';
 import EmptyState from '../../components/common/EmptyState';
 import { useAuth } from '../../context/AuthContext';
-import { RadarMetrics, Post, UserReputation, ReputationTransaction } from '../../types';
+import { useTheme, Theme } from '../../context/ThemeContext';
+import { RadarMetrics, Post, UserReputation, ReputationTransaction, User } from '../../types';
 import { communityApi, analyticsApi, authApi } from '../../api';
 import { toast } from '../../context/ToastContext';
+import { EditProfileModal } from '../../components/profile/EditProfileModal';
+import { getSafeAvatarUrl, getDeterministicAvatar } from '../../utils/avatarHelper';
 
 export const MyProfile: React.FC = () => {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'posts' | 'reputation' | 'repos' | 'radar'>('posts');
+  const { user, updateUser } = useAuth();
+  const { theme, setTheme, isDark } = useTheme();
+  const [activeTab, setActiveTab] = useState<'posts' | 'reputation' | 'repos' | 'radar' | 'settings'>('posts');
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState<boolean>(true);
   const [reputation, setReputation] = useState<UserReputation | null>(null);
@@ -21,7 +25,15 @@ export const MyProfile: React.FC = () => {
   const [isLoadingReputation, setIsLoadingReputation] = useState<boolean>(true);
   const [currentAvatar, setCurrentAvatar] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState<boolean>(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
   const avatarInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const handleProfileUpdated = (updated: Partial<User>) => {
+    updateUser(updated);
+    if (updated.avatarUrl) {
+      setCurrentAvatar(updated.avatarUrl);
+    }
+  };
   const [metrics, setMetrics] = useState<RadarMetrics>({
     codeQuality: 85,
     activityFrequency: 80,
@@ -98,6 +110,7 @@ export const MyProfile: React.FC = () => {
       setIsUploadingAvatar(true);
       const newUrl = await authApi.uploadAvatar(file);
       setCurrentAvatar(newUrl);
+      updateUser({ avatarUrl: newUrl });
       toast.success('Cập nhật ảnh đại diện lên MinIO S3 thành công!');
     } catch (err: any) {
       toast.error(err?.message || 'Không thể tải ảnh lên MinIO. Vui lòng thử lại.');
@@ -114,23 +127,26 @@ export const MyProfile: React.FC = () => {
       {/* Profile Header Banner */}
       <Card variant="elevated" padding="none" className="overflow-hidden">
         {/* Banner Gradient */}
-        <div className="h-36 bg-gradient-to-r from-brand-primary via-indigo-900 to-surface-card border-b border-surface-border relative" />
+        <div className="h-36 sm:h-40 bg-gradient-to-r from-brand-primary via-indigo-900 to-slate-900 border-b border-surface-border relative" />
 
         {/* User Info Bar */}
-        <div className="p-6 relative flex flex-col md:flex-row md:items-end justify-between gap-6 -mt-16">
+        <div className="px-6 pb-6 pt-3 relative flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="flex flex-col md:flex-row md:items-end gap-5">
-            <div className="relative group">
+            <div className="-mt-14 sm:-mt-16 shrink-0 relative group">
               <img
-                src={currentAvatar || user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&h=120'}
+                src={getSafeAvatarUrl(currentAvatar || user?.avatarUrl, user?.displayName || user?.username, user?.role)}
                 alt={user?.displayName}
-                className="w-24 h-24 rounded-full border-4 border-surface-card object-cover shadow-xl bg-surface-card"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = getDeterministicAvatar(user?.displayName || user?.username || 'user', user?.role);
+                }}
+                className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-surface-card object-cover shadow-xl bg-surface-card"
               />
               <button
                 type="button"
                 onClick={() => avatarInputRef.current?.click()}
                 disabled={isUploadingAvatar}
                 className="absolute inset-0 bg-black/50 rounded-full flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer border-4 border-transparent"
-                title="Thay đổi ảnh đại diện (MinIO S3)"
+                title="Thay đổi ảnh đại diện"
               >
                 {isUploadingAvatar ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -149,34 +165,43 @@ export const MyProfile: React.FC = () => {
                 className="hidden"
               />
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1.5 pb-1">
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-xl font-bold text-text-main">{user?.displayName || 'Thành viên DevRadar'}</h1>
-                <Badge variant="role" size="sm">{user?.role || 'Member'}</Badge>
-                <Badge variant="reputation" size="sm">⚡ {reputation?.permanentReputationPoints ?? user?.reputationPoints ?? 1000} PRP</Badge>
+                <h1 className="text-xl sm:text-2xl font-bold text-text-main leading-tight">{user?.displayName || 'Thành viên DevRadar'}</h1>
+                <Badge variant="role" size="sm" className="font-semibold">{user?.role || 'Member'}</Badge>
+                <Badge variant="reputation" size="sm" icon="Zap" className="font-semibold py-1 px-2.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 shadow-sm">
+                  {reputation?.permanentReputationPoints ?? user?.reputationPoints ?? 1000} PRP
+                </Badge>
                 {reputation?.tierBadge && (
-                  <Badge variant="tech" size="sm">{reputation.tierBadge}</Badge>
+                  <Badge variant="tech" size="sm" icon="Star" className="font-semibold py-1 px-2.5 bg-brand-primary/15 text-brand-secondary border-brand-primary/30 shadow-sm">
+                    {reputation.tierBadge.replace(/^[^\w\s\u00C0-\u1EF9]+/u, '').trim()}
+                  </Badge>
                 )}
                 {reputation && (
-                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded border ${
-                    reputation.trustSafetyScore >= 80 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
-                    reputation.trustSafetyScore >= 60 ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' :
-                    reputation.trustSafetyScore >= 40 ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
-                    'bg-red-500/10 text-red-400 border-red-500/30'
+                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded border shadow-sm ${
+                    reputation.trustSafetyScore >= 80 ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' :
+                    reputation.trustSafetyScore >= 60 ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border-yellow-500/30' :
+                    reputation.trustSafetyScore >= 40 ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30' :
+                    'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30'
                   }`}>
                     🛡️ TSS {reputation.trustSafetyScore}/100
                   </span>
                 )}
               </div>
               <span className="text-xs text-text-subtle font-mono">@{user?.userName || 'developer'} • DevRadar Platform</span>
-              <p className="text-xs text-text-muted mt-1 max-w-xl leading-relaxed">
+              <p className="text-xs sm:text-sm text-text-muted mt-0.5 max-w-xl leading-relaxed">
                 {user?.bio || 'Chưa cập nhật giới thiệu cá nhân.'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" icon="edit">
+          <div className="flex items-center gap-2 shrink-0 pb-1">
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="edit"
+              onClick={() => setIsEditModalOpen(true)}
+            >
               Chỉnh sửa hồ sơ
             </Button>
             <a href={user?.githubProfileUrl || `https://github.com/${user?.userName || ''}`} target="_blank" rel="noreferrer">
@@ -197,7 +222,7 @@ export const MyProfile: React.FC = () => {
                 : 'border-transparent text-text-muted hover:text-text-main'
             }`}
           >
-            Bài viết của tôi ({posts.length})
+            Bài viết của tôi: {posts.length}
           </button>
           <button
             onClick={() => setActiveTab('reputation')}
@@ -229,6 +254,17 @@ export const MyProfile: React.FC = () => {
           >
             Radar Năng lực cá nhân
           </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`py-3 border-b-2 transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'settings'
+                ? 'border-brand-secondary text-brand-secondary'
+                : 'border-transparent text-text-muted hover:text-text-main'
+            }`}
+          >
+            <AppIcon name="Settings" size={14} />
+            <span>Cài đặt & Giao diện</span>
+          </button>
         </div>
       </Card>
 
@@ -237,7 +273,7 @@ export const MyProfile: React.FC = () => {
         <Card variant="default" padding="lg" className="flex flex-col items-center gap-6">
           <div className="text-center">
             <h2 className="text-base font-bold text-text-main">
-              BIỂU ĐỒ RADAR NĂNG LỰC CÁ NHÂN (CV SỐNG)
+              BIỂU ĐỒ RADAR NĂNG LỰC CÁ NHÂN
             </h2>
             <p className="text-xs text-text-muted mt-1">
               Điểm năng lực được đồng bộ từ commit history và repository đóng góp trên GitHub qua Crawler & Analytics
@@ -263,19 +299,27 @@ export const MyProfile: React.FC = () => {
             <Card variant="elevated" padding="md" className="flex flex-col gap-4 border-surface-border">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-text-muted">CẤP BẬC HIỆN TẠI</span>
-                <Badge variant="reputation">Cấp {reputation?.currentTierLevel ?? 1}/6</Badge>
+                <Badge variant="reputation">Cấp {reputation?.currentTierLevel ?? 1}/5</Badge>
               </div>
               <div className="flex items-center gap-3">
-                <div className="text-3xl">{reputation?.tierBadge?.split(' ')[0] || '🌱'}</div>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-brand-primary/10 border border-brand-primary/20 text-brand-secondary flex-shrink-0">
+                  <AppIcon name="Award" size={26} />
+                </div>
                 <div>
-                  <h3 className="text-lg font-bold text-text-main">{reputation?.tierTitle || 'Code Initiate'}</h3>
-                  <span className="text-xs text-text-subtle">{reputation?.tierBadge || '🌱 Tân thủ'}</span>
+                  <h3 className="text-lg font-bold text-text-main">{reputation?.tierTitle || 'Newbie'}</h3>
+                  <span className="text-xs text-text-subtle inline-flex items-center gap-1">
+                    <AppIcon name="Star" size={12} className="text-amber-400" />
+                    <span>{(reputation?.tierBadge || 'Tân thủ').replace(/^[^\w\s\u00C0-\u1EF9]+/u, '').trim()}</span>
+                  </span>
                 </div>
               </div>
               <div className="pt-2 border-t border-surface-border">
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-text-muted">Điểm Uy tín Vĩnh viễn (PRP)</span>
-                  <span className="font-mono font-bold text-brand-secondary">⚡ {(reputation?.permanentReputationPoints ?? 0).toLocaleString()}</span>
+                  <span className="text-text-muted">Điểm Uy tín Vĩnh viễn</span>
+                  <span className="font-mono font-bold text-brand-secondary inline-flex items-center gap-1">
+                    <AppIcon name="Zap" size={13} className="text-amber-400" />
+                    <span>{(reputation?.permanentReputationPoints ?? 0).toLocaleString()}</span>
+                  </span>
                 </div>
                 {reputation?.nextTierTitle && (
                   <div className="mt-3">
@@ -290,7 +334,7 @@ export const MyProfile: React.FC = () => {
                       />
                     </div>
                     <span className="text-[10px] text-text-muted mt-1 block">
-                      Còn thiếu {reputation.pointsToNextTier} điểm để thăng cấp ({reputation.nextTierRequiredPoints} PRP)
+                      Còn thiếu {reputation.pointsToNextTier} điểm để đạt mốc {reputation.nextTierRequiredPoints} điểm
                     </span>
                   </div>
                 )}
@@ -300,14 +344,14 @@ export const MyProfile: React.FC = () => {
             {/* Card 2: Trust & Safety Score (TSS) */}
             <Card variant="elevated" padding="md" className="flex flex-col gap-4 border-surface-border">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-text-muted">ĐIỂM TÍN NHIỆM & AN TOÀN (TSS)</span>
+                <span className="text-xs font-semibold text-text-muted">ĐIỂM TÍN NHIỆM & AN TOÀN</span>
                 <span className={`text-xs font-bold px-2 py-0.5 rounded ${
                   (reputation?.trustSafetyScore ?? 100) >= 80 ? 'bg-emerald-500/10 text-emerald-400' :
                   (reputation?.trustSafetyScore ?? 100) >= 60 ? 'bg-yellow-500/10 text-yellow-400' :
                   (reputation?.trustSafetyScore ?? 100) >= 40 ? 'bg-amber-500/10 text-amber-400' :
                   'bg-red-500/10 text-red-400'
                 }`}>
-                  {(reputation?.trustSafetyScore ?? 100) >= 80 ? 'Tốt (Chuẩn mực)' :
+                  {(reputation?.trustSafetyScore ?? 100) >= 80 ? 'Tốt' :
                    (reputation?.trustSafetyScore ?? 100) >= 60 ? 'Cảnh báo mức 1' :
                    (reputation?.trustSafetyScore ?? 100) >= 40 ? 'Sandbox Moderated' :
                    'Hạn chế tương tác'}
@@ -338,7 +382,7 @@ export const MyProfile: React.FC = () => {
             {/* Card 3: Periodic Contribution Score (PCS) */}
             <Card variant="elevated" padding="md" className="flex flex-col gap-4 border-surface-border">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-text-muted">ĐIỂM ĐÓNG GÓP KỲ (PCS)</span>
+                <span className="text-xs font-semibold text-text-muted">ĐIỂM ĐÓNG GÓP KỲ</span>
                 <Badge variant="tech" size="sm">Chu kỳ mở</Badge>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -356,24 +400,23 @@ export const MyProfile: React.FC = () => {
                 </div>
               </div>
               <p className="text-[11px] text-text-muted leading-relaxed">
-                ❄️ Cơ chế Ngủ đông: Giảm 15%/tuần trên điểm PCS nếu tài khoản không hoạt động trên 14 ngày.
+                ❄️ Cơ chế Ngủ đông: Giảm 15%/tuần trên điểm đóng góp nếu tài khoản không hoạt động trên 14 ngày.
               </p>
             </Card>
           </div>
 
-          {/* 6-Tier Hierarchy Tree Visualizer */}
+          {/* 5-Tier Hierarchy Tree Visualizer */}
           <Card variant="default" padding="md" className="border-surface-border">
             <h3 className="text-sm font-bold text-text-main uppercase tracking-wider mb-4">
-              CÂY CẤP BẬC LẬP TRÌNH VIÊN DEVRADAR (6 TIERS HIERARCHY)
+              CÂY CẤP BẬC LẬP TRÌNH VIÊN DEVRADAR
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
               {[
-                { level: 1, title: 'Code Initiate', badge: '🌱 Tân thủ', range: '0 - 99 PRP', priv: 'Đăng bài cơ bản, bình luận' },
-                { level: 2, title: 'Developer', badge: '💻 Lập trình viên', range: '100 - 399 PRP', priv: 'Tạo Bookmark Folder, đính kèm code' },
-                { level: 3, title: 'Senior Contributor', badge: '🚀 Đóng góp kỳ cựu', range: '400 - 999 PRP', priv: 'Bỏ qua kiểm duyệt AI, gắn tag' },
-                { level: 4, title: 'Tech Lead', badge: '⭐ Trưởng nhóm công nghệ', range: '1,000 - 2,499 PRP', priv: 'Đề xuất Best Solution, ghim bài' },
-                { level: 5, title: 'Principal Architect', badge: '🏛️ Kiến trúc sư trưởng', range: '2,500 - 4,999 PRP', priv: 'Tạo TechZone mới, kiểm duyệt cộng đồng' },
-                { level: 6, title: 'DevRadar Fellow', badge: '👑 Chuyên gia danh dự', range: '5,000+ PRP', priv: 'Hội đồng Quản trị nội dung, đặc quyền tối cao' },
+                { level: 1, title: 'Newbie', badge: 'Tân thủ', icon: 'Sprout', range: '0 - 99 điểm', priv: 'Đăng bài cơ bản, bình luận' },
+                { level: 2, title: 'Junior', badge: 'Lập trình viên', icon: 'Code2', range: '100 - 399 điểm', priv: 'Tạo Bookmark Folder, đính kèm code' },
+                { level: 3, title: 'Senior', badge: 'Senior', icon: 'Sparkles', range: '400 - 999 điểm', priv: 'Bỏ qua kiểm duyệt AI, gắn tag' },
+                { level: 4, title: 'Master', badge: 'Chuyên gia', icon: 'Star', range: '1,000 - 2,499 điểm', priv: 'Đề xuất Best Solution, ghim bài' },
+                { level: 5, title: 'Legend', badge: 'Huyền thoại', icon: 'Crown', range: '2,500+ điểm', priv: 'Hội đồng Quản trị nội dung, đặc quyền tối cao' },
               ].map((tier) => {
                 const isCurrent = (reputation?.currentTierLevel ?? 1) === tier.level;
                 const isAchieved = (reputation?.currentTierLevel ?? 1) >= tier.level;
@@ -396,7 +439,10 @@ export const MyProfile: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <div className="text-sm font-bold text-text-main truncate">{tier.badge}</div>
+                    <div className="text-sm font-bold text-text-main truncate flex items-center gap-1.5">
+                      <AppIcon name={tier.icon as any} size={15} className="text-brand-secondary flex-shrink-0" />
+                      <span>{tier.badge}</span>
+                    </div>
                     <div className="text-[11px] font-mono text-brand-secondary font-semibold mt-1">{tier.range}</div>
                     <p className="text-[10px] text-text-muted mt-2 leading-tight">{tier.priv}</p>
                   </div>
@@ -405,12 +451,12 @@ export const MyProfile: React.FC = () => {
             </div>
           </Card>
 
-          {/* Audit Log (Reputation History) */}
+          {/* Audit Log */}
           <Card variant="default" padding="none" className="overflow-hidden border-surface-border">
             <div className="p-4 bg-surface-elevated/40 border-b border-surface-border flex items-center justify-between">
               <div>
                 <h3 className="text-xs font-bold text-text-main uppercase tracking-wider">
-                  NHẬT KÝ BIẾN ĐỘNG ĐIỂM (REPUTATION AUDIT LOG)
+                  NHẬT KÝ BIẾN ĐỘNG ĐIỂM
                 </h3>
                 <span className="text-[11px] text-text-muted">Minh bạch mọi giao dịch cộng/trừ điểm và điểm an toàn TSS</span>
               </div>
@@ -470,6 +516,174 @@ export const MyProfile: React.FC = () => {
             )}
           </Card>
         </div>
+      ) : activeTab === 'settings' ? (
+        <div className="flex flex-col gap-6">
+          {/* Card Cài đặt Giao diện */}
+          <Card variant="elevated" padding="lg" className="flex flex-col gap-6">
+            <div>
+              <div className="flex items-center gap-2">
+                <AppIcon name="Settings" size={20} className="text-brand-secondary" />
+                <h2 className="text-lg font-bold text-text-main">Tùy biến Giao diện</h2>
+              </div>
+              <p className="text-xs text-text-muted mt-1">
+                Lựa chọn chế độ hiển thị phù hợp với môi trường làm việc của bạn. Cài đặt được lưu tự động trên trình duyệt.
+              </p>
+            </div>
+
+            {/* Bộ chọn Theme với visual cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Option 1: Light */}
+              <button
+                type="button"
+                onClick={() => setTheme('light')}
+                className={`text-left p-4 rounded-xl border-2 transition-all relative flex flex-col gap-3 ${
+                  theme === 'light'
+                    ? 'border-brand-primary bg-brand-primary/5 shadow-sm shadow-brand-primary/10'
+                    : 'border-surface-border bg-surface-card hover:border-surface-border/80 hover:bg-surface-elevated/50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                    <AppIcon name="Sun" size={22} />
+                  </div>
+                  {theme === 'light' && (
+                    <span className="w-5 h-5 rounded-full bg-brand-primary text-white flex items-center justify-center text-xs">
+                      ✓
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-text-main">Giao diện Sáng</h3>
+                  <p className="text-xs text-text-muted mt-1">
+                    Trang nhã, rõ nét, tối ưu độ tương phản khi làm việc ban ngày hoặc môi trường nhiều ánh sáng.
+                  </p>
+                </div>
+                {/* Mini preview */}
+                <div className="mt-auto pt-2">
+                  <div className="rounded-lg bg-white p-2 border border-slate-200 text-slate-800 shadow-inner flex flex-col gap-1 text-[10px]">
+                    <div className="h-2 w-12 bg-sky-600 rounded-full" />
+                    <div className="h-1.5 w-full bg-slate-200 rounded" />
+                    <div className="h-1.5 w-3/4 bg-slate-200 rounded" />
+                  </div>
+                </div>
+              </button>
+
+              {/* Option 2: Dark */}
+              <button
+                type="button"
+                onClick={() => setTheme('dark')}
+                className={`text-left p-4 rounded-xl border-2 transition-all relative flex flex-col gap-3 ${
+                  theme === 'dark'
+                    ? 'border-brand-primary bg-brand-primary/5 shadow-sm shadow-brand-primary/10'
+                    : 'border-surface-border bg-surface-card hover:border-surface-border/80 hover:bg-surface-elevated/50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 rounded-lg bg-sky-500/10 text-brand-secondary flex items-center justify-center">
+                    <AppIcon name="Moon" size={22} />
+                  </div>
+                  {theme === 'dark' && (
+                    <span className="w-5 h-5 rounded-full bg-brand-primary text-white flex items-center justify-center text-xs">
+                      ✓
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-text-main">Giao diện Tối</h3>
+                  <p className="text-xs text-text-muted mt-1">
+                    Êm dịu thị giác, tối ưu cho lập trình viên làm việc ban đêm và tiết kiệm pin màn hình OLED.
+                  </p>
+                </div>
+                {/* Mini preview */}
+                <div className="mt-auto pt-2">
+                  <div className="rounded-lg bg-slate-900 p-2 border border-slate-800 text-slate-100 shadow-inner flex flex-col gap-1 text-[10px]">
+                    <div className="h-2 w-12 bg-sky-400 rounded-full" />
+                    <div className="h-1.5 w-full bg-slate-800 rounded" />
+                    <div className="h-1.5 w-3/4 bg-slate-800 rounded" />
+                  </div>
+                </div>
+              </button>
+
+              {/* Option 3: System */}
+              <button
+                type="button"
+                onClick={() => setTheme('system')}
+                className={`text-left p-4 rounded-xl border-2 transition-all relative flex flex-col gap-3 ${
+                  theme === 'system'
+                    ? 'border-brand-primary bg-brand-primary/5 shadow-sm shadow-brand-primary/10'
+                    : 'border-surface-border bg-surface-card hover:border-surface-border/80 hover:bg-surface-elevated/50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                    <AppIcon name="Monitor" size={22} />
+                  </div>
+                  {theme === 'system' && (
+                    <span className="w-5 h-5 rounded-full bg-brand-primary text-white flex items-center justify-center text-xs">
+                      ✓
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="text-sm font-bold text-text-main">Theo Hệ Thống</h3>
+                    <Badge variant="tech" size="sm">Auto</Badge>
+                  </div>
+                  <p className="text-xs text-text-muted mt-1">
+                    Tự động đồng bộ và thay đổi theo cài đặt sáng/tối của Windows, macOS hoặc trình duyệt.
+                  </p>
+                </div>
+                {/* Mini preview */}
+                <div className="mt-auto pt-2">
+                  <div className="rounded-lg bg-gradient-to-r from-white to-slate-900 p-2 border border-surface-border flex items-center justify-between text-[10px] text-text-subtle font-mono">
+                    <span className="text-slate-800 font-bold">Light</span>
+                    <span className="text-slate-200 font-bold">Dark</span>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            {/* Trạng thái thực tế & Xem trước trực tiếp */}
+            <div className="pt-4 border-t border-surface-border flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-text-muted">
+                  Chế độ đang kích hoạt thực tế:{' '}
+                  <strong className="text-text-main font-semibold">
+                    {isDark ? '🌙 Chế độ Tối (Dark Mode)' : '☀️ Chế độ Sáng (Light Mode)'}
+                  </strong>
+                </span>
+                <Badge variant="tech" size="sm">
+                  Cấu hình: {theme.toUpperCase()}
+                </Badge>
+              </div>
+
+              {/* Sample Card Live Preview */}
+              <div className="p-4 rounded-xl border border-surface-border bg-surface-elevated/40 flex flex-col gap-2">
+                <span className="text-[11px] font-semibold text-text-subtle uppercase tracking-wider">
+                  Xem trước cách hiển thị thẻ nội dung (Live Preview)
+                </span>
+                <Card variant="default" padding="sm" className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-brand-primary/20 text-brand-secondary flex items-center justify-center font-bold text-xs">
+                        DR
+                      </div>
+                      <span className="text-xs font-bold text-text-main">DevRadar Live Preview</span>
+                    </div>
+                    <Badge variant="reputation">Demo</Badge>
+                  </div>
+                  <p className="text-xs text-text-muted">
+                    Văn bản và các phần tử UI tự động điều chỉnh màu sắc chuẩn WCAG, tương phản cao và không gây mỏi mắt.
+                  </p>
+                  <div className="flex items-center gap-2 pt-2 border-t border-surface-border">
+                    <Button variant="primary" size="sm">Nút Thao Tác</Button>
+                    <Button variant="outline" size="sm">Tùy Chọn</Button>
+                  </div>
+                </Card>
+              </div>
+            </div>
+          </Card>
+        </div>
       ) : (
         <div className="flex flex-col gap-4">
           {isLoadingPosts ? (
@@ -510,6 +724,19 @@ export const MyProfile: React.FC = () => {
             ))
           )}
         </div>
+      )}
+
+      {/* Modal Chỉnh sửa hồ sơ cá nhân */}
+      {user && (
+        <EditProfileModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          user={{
+            ...user,
+            avatarUrl: currentAvatar || user.avatarUrl,
+          }}
+          onProfileUpdated={handleProfileUpdated}
+        />
       )}
     </div>
   );

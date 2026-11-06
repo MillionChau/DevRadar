@@ -13,6 +13,7 @@ export interface ActivityPayload {
     username?: string;
     displayName?: string;
     role?: string;
+    avatarUrl?: string;
   };
 }
 
@@ -25,6 +26,7 @@ export const recordActivity = async (payload: ActivityPayload): Promise<void> =>
     let username = payload.customUser?.username || 'guest';
     let displayName = payload.customUser?.displayName || 'Khách vãng lai';
     let role = payload.customUser?.role || 'Guest';
+    let avatarUrl = payload.customUser?.avatarUrl || undefined;
 
     if (!payload.customUser) {
       const savedUser = localStorage.getItem('devradar_user');
@@ -34,6 +36,7 @@ export const recordActivity = async (payload: ActivityPayload): Promise<void> =>
           username = parsed.userName || parsed.email || 'user';
           displayName = parsed.displayName || parsed.fullName || username;
           role = parsed.role || 'Member';
+          avatarUrl = parsed.avatarUrl || undefined;
         } catch {
           // ignore parsing error
         }
@@ -46,6 +49,7 @@ export const recordActivity = async (payload: ActivityPayload): Promise<void> =>
       username,
       display_name: displayName,
       role,
+      avatar_url: avatarUrl,
       action: payload.action,
       action_label: payload.action_label,
       category: payload.category || 'GENERAL',

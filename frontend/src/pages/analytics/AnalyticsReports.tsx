@@ -10,7 +10,7 @@ import { toast } from '../../context/ToastContext';
 interface WhitepaperReport {
   id: string;
   title: string;
-  period: string;
+  category: string;
   author: string;
   summary: string;
   downloadCount: number;
@@ -19,6 +19,7 @@ interface WhitepaperReport {
 
 export const AnalyticsReports: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState('2026');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [reports, setReports] = useState<WhitepaperReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
@@ -26,15 +27,15 @@ export const AnalyticsReports: React.FC = () => {
   useEffect(() => {
     setIsLoading(true);
     analyticsApi
-      .getReports(10)
+      .getReports(20, selectedCategory === 'all' ? undefined : selectedCategory)
       .then((data) => {
         const items: any[] = Array.isArray(data) ? data : (data as any)?.items || [];
         if (Array.isArray(items)) {
           const liveReports: WhitepaperReport[] = items.map((r: any) => ({
             id: r.id || r._id,
             title: r.title || 'Báo cáo Phân tích Xu hướng Công nghệ AI',
-            period: r.category || 'Tự động định kỳ',
-            author: r.author_name || r.author || 'AI Radar Analyzer',
+            category: r.category || 'TREND',
+            author: r.author_name || r.author || 'DevRadar AI Analyst',
             summary: r.summary || (r.content_markdown ? r.content_markdown.substring(0, 160) + '...' : 'Tài liệu nghiên cứu kỹ thuật.'),
             downloadCount: r.views_count || 120,
             fileSize: 'Markdown / Web',
@@ -48,18 +49,18 @@ export const AnalyticsReports: React.FC = () => {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [selectedYear]);
+  }, [selectedYear, selectedCategory]);
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-surface-border">
         <div>
-          <h1 className="text-xl font-bold text-text-main">
-            DANH MỤC BÁO CÁO PHÂN TÍCH XU HƯỚNG CÔNG NGHỆ (SCR-13)
+          <h1 className="text-xl font-bold text-text-main flex items-center gap-2">
+            <span>DANH MỤC BÁO CÁO PHÂN TÍCH XU HƯỚNG CÔNG NGHỆ</span>
           </h1>
           <p className="text-xs text-text-muted mt-1">
-            Các tài liệu nghiên cứu chuyên sâu (Whitepapers) được tổng hợp tự động từ dữ liệu DevRadar
+            Báo cáo suy luận định lượng chuyên sâu (Whitepapers) và Đánh giá Sức khỏe Kho mã nguồn được tự động sinh bởi DevRadar Cognitive Agent
           </p>
         </div>
 
@@ -73,6 +74,30 @@ export const AnalyticsReports: React.FC = () => {
             <option value="2025">Năm 2025</option>
           </select>
         </div>
+      </div>
+
+      {/* Category Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-surface-border">
+        {[
+          { key: 'all', label: 'Tất cả Báo cáo' },
+          { key: 'MONTHLY_TREND', label: '📅 Xu hướng Tháng' },
+          { key: 'REPOSITORY', label: '🔍 Đánh giá Kho mã nguồn' },
+          { key: 'LANGUAGE', label: 'Ngôn ngữ Lập trình' },
+          { key: 'FRAMEWORK', label: 'Framework' },
+          { key: 'DEVOPS', label: 'DevOps & Cloud' },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setSelectedCategory(tab.key)}
+            className={`px-3 py-1.5 rounded-btn text-xs font-medium whitespace-nowrap transition-colors ${
+              selectedCategory === tab.key
+                ? 'bg-brand-primary text-white font-semibold shadow-sm'
+                : 'bg-surface-elevated text-text-muted hover:text-text-main hover:bg-surface-border'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Reports Grid */}
@@ -98,9 +123,19 @@ export const AnalyticsReports: React.FC = () => {
           >
             <div className="flex flex-col gap-2.5">
               <div className="flex items-center justify-between">
-                <Badge variant="reputation" size="sm">
-                  {rep.period}
-                </Badge>
+                {rep.category === 'MONTHLY_TREND' ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
+                    📅 Xu hướng Tháng
+                  </span>
+                ) : rep.category === 'REPOSITORY' ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
+                    🔍 Đánh giá Repo
+                  </span>
+                ) : (
+                  <Badge variant="reputation" size="sm">
+                    {rep.category}
+                  </Badge>
+                )}
                 <span className="text-[11px] text-text-subtle font-mono">{rep.fileSize}</span>
               </div>
 
