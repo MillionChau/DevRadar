@@ -4,12 +4,20 @@
  * Tự động chèn Bearer Token, xử lý refresh token khi 401 và logging lỗi.
  */
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000';
+const envBaseUrl = (import.meta as any).env?.VITE_API_BASE_URL;
+const API_BASE_URL =
+  envBaseUrl !== undefined && envBaseUrl !== null
+    ? envBaseUrl
+    : typeof window !== 'undefined' && (window.location.port === '3000' || window.location.port === '80')
+    ? ''
+    : 'http://localhost:5000';
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined | null>;
   skipAuth?: boolean;
 }
+
+export type LoadingCallback = (isLoading: boolean, activeRequests: number) => void;
 
 export class ApiError extends Error {
   status: number;
@@ -27,9 +35,40 @@ class ApiClient {
   private baseUrl: string;
   private isRefreshing = false;
   private refreshSubscribers: Array<(token: string) => void> = [];
+  private activeRequests = 0;
+  private loadingListeners: Set<LoadingCallback> = new Set();
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl.replace(/\/$/, '');
+  }
+
+  public subscribeLoading(cb: LoadingCallback): () => void {
+    this.loadingListeners.add(cb);
+    cb(this.activeRequests > 0, this.activeRequests);
+    return () => {
+      this.loadingListeners.delete(cb);
+    };
+  }
+
+  private notifyLoading() {
+    const isLoading = this.activeRequests > 0;
+    this.loadingListeners.forEach((cb) => {
+      try {
+        cb(isLoading, this.activeRequests);
+      } catch (err) {
+        console.error('Loading listener error:', err);
+      }
+    });
+  }
+
+  private startRequest() {
+    this.activeRequests++;
+    this.notifyLoading();
+  }
+
+  private endRequest() {
+    this.activeRequests = Math.max(0, this.activeRequests - 1);
+    this.notifyLoading();
   }
 
   private getAccessToken(): string | null {
@@ -118,10 +157,15 @@ class ApiClient {
       }
     }
 
+    const isFormData = typeof FormData !== 'undefined' && customConfig.body instanceof FormData;
+
     const defaultHeaders: Record<string, string> = {
-      'Content-Type': 'application/json',
       Accept: 'application/json',
     };
+
+    if (!isFormData) {
+      defaultHeaders['Content-Type'] = 'application/json';
+    }
 
     if (!skipAuth) {
       const token = this.getAccessToken();
@@ -130,14 +174,22 @@ class ApiClient {
       }
     }
 
-    const config: RequestInit = {
-      ...customConfig,
-      headers: {
-        ...defaultHeaders,
-        ...(headers as Record<string, string>),
-      },
+    const mergedHeaders: Record<string, string> = {
+      ...defaultHeaders,
+      ...(headers as Record<string, string>),
     };
 
+    // Khi gửi FormData, bắt buộc xóa Content-Type để trình duyệt tự động gán multipart/form-data kèm boundary
+    if (isFormData && mergedHeaders['Content-Type']) {
+      delete mergedHeaders['Content-Type'];
+    }
+
+    const config: RequestInit = {
+      ...customConfig,
+      headers: mergedHeaders,
+    };
+
+    this.startRequest();
     try {
       const response = await fetch(url, config);
 
@@ -196,6 +248,8 @@ class ApiClient {
         throw error;
       }
       throw new ApiError(0, (error as Error).message || 'Lỗi kết nối mạng tới API Gateway');
+    } finally {
+      this.endRequest();
     }
   }
 
@@ -204,26 +258,29 @@ class ApiClient {
   }
 
   public post<T = any>(endpoint: string, data?: any, options?: RequestOptions): Promise<T> {
+    const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
     return this.request<T>(endpoint, {
       ...options,
       method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
+      body: isFormData ? data : (data !== undefined ? JSON.stringify(data) : undefined),
     });
   }
 
   public put<T = any>(endpoint: string, data?: any, options?: RequestOptions): Promise<T> {
+    const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
     return this.request<T>(endpoint, {
       ...options,
       method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
+      body: isFormData ? data : (data !== undefined ? JSON.stringify(data) : undefined),
     });
   }
 
   public patch<T = any>(endpoint: string, data?: any, options?: RequestOptions): Promise<T> {
+    const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
     return this.request<T>(endpoint, {
       ...options,
       method: 'PATCH',
-      body: data ? JSON.stringify(data) : undefined,
+      body: isFormData ? data : (data !== undefined ? JSON.stringify(data) : undefined),
     });
   }
 

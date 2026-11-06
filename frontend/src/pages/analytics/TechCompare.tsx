@@ -75,62 +75,62 @@ export const TechCompare: React.FC = () => {
   const t2 = compareData?.technology_2;
 
   const metricsA: RadarMetrics = {
-    codeQuality: t1?.radar_axes?.health ?? 85,
-    activityFrequency: t1?.radar_axes?.activity ?? 80,
-    communityContribution: t1?.radar_axes?.community ?? 90,
-    projectReputation: t1?.radar_axes?.scale ?? 60,
-    techStackDepth: t1?.radar_axes?.growth ?? 88,
+    codeQuality: t1?.radar_axes?.health ?? 0,
+    activityFrequency: t1?.radar_axes?.activity ?? 0,
+    communityContribution: t1?.radar_axes?.community ?? 0,
+    projectReputation: t1?.radar_axes?.scale ?? 0,
+    techStackDepth: t1?.radar_axes?.growth ?? 0,
   };
 
   const metricsB: RadarMetrics = {
-    codeQuality: t2?.radar_axes?.health ?? 82,
-    activityFrequency: t2?.radar_axes?.activity ?? 85,
-    communityContribution: t2?.radar_axes?.community ?? 88,
-    projectReputation: t2?.radar_axes?.scale ?? 58,
-    techStackDepth: t2?.radar_axes?.growth ?? 85,
+    codeQuality: t2?.radar_axes?.health ?? 0,
+    activityFrequency: t2?.radar_axes?.activity ?? 0,
+    communityContribution: t2?.radar_axes?.community ?? 0,
+    projectReputation: t2?.radar_axes?.scale ?? 0,
+    techStackDepth: t2?.radar_axes?.growth ?? 0,
   };
 
   const comparisonRows = [
     {
       metric: 'Điểm Sức khỏe Tổng thể (Health Score)',
-      a: `${t1?.health_score ?? 88.7} / 100`,
-      b: `${t2?.health_score ?? 88.3} / 100`,
+      a: t1?.health_score !== undefined ? `${t1.health_score} / 100` : '—',
+      b: t2?.health_score !== undefined ? `${t2.health_score} / 100` : '—',
       winner: (t1?.health_score ?? 0) >= (t2?.health_score ?? 0) ? 'A' : 'B',
     },
     {
       metric: 'Xếp loại Hệ sinh thái (Health Tier)',
-      a: t1?.health_level ?? 'HEALTHY',
-      b: t2?.health_level ?? 'HEALTHY',
-      winner: t1?.health_level === 'HEALTHY' ? 'A' : 'B',
+      a: t1?.health_level ?? '—',
+      b: t2?.health_level ?? '—',
+      winner: (t1?.health_level === 'HEALTHY' || t1?.health_level === 'A+') ? 'A' : 'B',
     },
     {
       metric: 'Quy mô Kho mã Giám sát (Repositories)',
-      a: `${(t1?.repository_count ?? 550).toLocaleString()} repos`,
-      b: `${(t2?.repository_count ?? 450).toLocaleString()} repos`,
+      a: t1?.repository_count !== undefined ? `${t1.repository_count.toLocaleString()} repos` : '—',
+      b: t2?.repository_count !== undefined ? `${t2.repository_count.toLocaleString()} repos` : '—',
       winner: (t1?.repository_count ?? 0) >= (t2?.repository_count ?? 0) ? 'A' : 'B',
     },
     {
       metric: 'Tổng Stars GitHub Cộng đồng (Stars)',
-      a: `★ ${t1?.total_stars ?? '5.7M'}`,
-      b: `★ ${t2?.total_stars ?? '5.5M'}`,
+      a: t1?.total_stars ? `★ ${t1.total_stars}` : '—',
+      b: t2?.total_stars ? `★ ${t2.total_stars}` : '—',
       winner: (t1?.raw_stars ?? 0) >= (t2?.raw_stars ?? 0) ? 'A' : 'B',
     },
     {
       metric: 'Lượt Forks & Phân nhánh (Forks)',
-      a: `⑂ ${t1?.total_forks ?? '1.2M'}`,
-      b: `⑂ ${t2?.total_forks ?? '950k'}`,
+      a: t1?.total_forks ? `⑂ ${t1.total_forks}` : '—',
+      b: t2?.total_forks ? `⑂ ${t2.total_forks}` : '—',
       winner: (t1?.raw_forks ?? 0) >= (t2?.raw_forks ?? 0) ? 'A' : 'B',
     },
     {
       metric: 'Tần suất Hoạt động Commit (Cadence)',
-      a: `${t1?.commit_activity ?? 100.0} / 100`,
-      b: `${t2?.commit_activity ?? 100.0} / 100`,
+      a: t1?.commit_activity !== undefined ? `${t1.commit_activity} / 100` : '—',
+      b: t2?.commit_activity !== undefined ? `${t2.commit_activity} / 100` : '—',
       winner: (t1?.commit_activity ?? 0) >= (t2?.commit_activity ?? 0) ? 'A' : 'B',
     },
     {
       metric: 'Tốc độ Tăng trưởng Hàng tháng (Growth)',
-      a: t1?.growth_rate ?? '+24.0%',
-      b: t2?.growth_rate ?? '+23.5%',
+      a: t1?.growth_rate ?? '—',
+      b: t2?.growth_rate ?? '—',
       winner: (t1?.growth_rate ?? '') >= (t2?.growth_rate ?? '') ? 'A' : 'B',
     },
   ];
@@ -142,7 +142,7 @@ export const TechCompare: React.FC = () => {
         <div>
           <h1 className="text-xl font-bold text-text-main flex items-center gap-2">
             <AppIcon name="radar" size={20} className="text-brand-secondary" />
-            SO SÁNH CÔNG NGHỆ ĐỐI ĐẦU DUAL RADAR (SCR-12)
+            SO SÁNH CÔNG NGHỆ ĐỐI ĐẦU DUAL RADAR
           </h1>
           <p className="text-xs text-text-muted mt-1">
             So sánh đối đầu trực diện 2 hệ sinh thái công nghệ qua biểu đồ ngũ giác 5 trục và ma trận chỉ số định lượng
@@ -169,7 +169,7 @@ export const TechCompare: React.FC = () => {
                   <option value="Python">Python</option>
                   <option value="TypeScript">TypeScript</option>
                   <option value="Go">Go</option>
-                  <option value="C#">C# (.NET)</option>
+                  <option value="C#">C# .NET</option>
                   <option value="Rust">Rust</option>
                 </>
               )}
@@ -196,7 +196,7 @@ export const TechCompare: React.FC = () => {
                   <option value="TypeScript">TypeScript</option>
                   <option value="Python">Python</option>
                   <option value="Go">Go</option>
-                  <option value="C#">C# (.NET)</option>
+                  <option value="C#">C# .NET</option>
                   <option value="Rust">Rust</option>
                 </>
               )}
