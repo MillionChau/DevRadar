@@ -1,12 +1,29 @@
 name: devradar
 
 services:
+  # ==================== Cổng giao tiếp Frontend (Duy nhất Public ra ngoài) ====================
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: devradar-frontend
+    restart: always
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - gateway-api
+    networks:
+      - devradar-network
+
   # ==================== Hạ tầng (Infrastructures) ====================
 
   identity-db:
     image: postgres:16-alpine
     container_name: devradar-identity-db
     restart: always
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_DB: devradar-identity
       POSTGRES_USER: postgres
@@ -18,11 +35,15 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - devradar-network
 
   community-db:
     image: postgres:16-alpine
     container_name: devradar-community-db
     restart: always
+    ports:
+      - "5433:5432"
     environment:
       POSTGRES_DB: community-postgres
       POSTGRES_USER: postgres
@@ -34,11 +55,15 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - devradar-network
 
   notification-db:
     image: postgres:16-alpine
     container_name: devradar-notification-db
     restart: always
+    ports:
+      - "5434:5432"
     environment:
       POSTGRES_DB: notification-postgres
       POSTGRES_USER: postgres
@@ -50,6 +75,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - devradar-network
 
   crawler-mongo:
     image: mongo:7
@@ -57,13 +84,15 @@ services:
     restart: always
     volumes:
       - crawler_mongodata:/data/db
-    ports:
-      - "27017:27017"
+    # ports:
+    #   - "27017:27017" # Bỏ comment nếu muốn kết nối trực tiếp Compass từ máy Host
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 10
+    networks:
+      - devradar-network
 
   quality-mongo:
     image: mongo:7
@@ -76,6 +105,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    networks:
+      - devradar-network
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
@@ -92,13 +123,15 @@ services:
       interval: 15s
       timeout: 10s
       retries: 10
+    networks:
+      - devradar-network
 
   redis:
     image: redis:7-alpine
     container_name: devradar-redis
     restart: always
-    ports:
-      - "6379:6379"
+    # ports:
+    #   - "6379:6379" # Chỉ truy cập nội bộ mạng Docker
     volumes:
       - redis_data:/data
     healthcheck:
@@ -106,14 +139,16 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    networks:
+      - devradar-network
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: devradar-rabbitmq
     restart: always
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+    # ports:
+    #   - "5672:5672"
+    #   - "15672:15672" # Bỏ comment nếu cần quản lý UI RabbitMQ từ bên ngoài
     environment:
       RABBITMQ_DEFAULT_USER: devradar
       RABBITMQ_DEFAULT_PASS: devradar2026
@@ -125,9 +160,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    networks:
+      - devradar-network
 
   minio:
-    image: minio/minio:latest
+    image: cgr.dev/chainguard/minio:latest
     container_name: devradar-minio
     restart: always
     ports:
@@ -144,9 +181,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - devradar-network
 
   minio-init:
-    image: minio/mc:latest
+    image: cgr.dev/chainguard/minio:latest
     container_name: devradar-minio-init
     depends_on:
       minio:
@@ -161,8 +200,10 @@ services:
       mc anonymous set download myminio/devradar-covers;
       exit 0;
       "
+    networks:
+      - devradar-network
 
-  # ==================== Application Services ====================
+  # ==================== Application Backend Services ====================
 
   identity-api:
     build:
@@ -170,8 +211,8 @@ services:
       dockerfile: Dockerfile
     container_name: devradar-identity-api
     restart: always
-    ports:
-      - "5002:8080"
+    # ports:
+    #   - "5002:8080" # Định tuyến tập trung qua Gateway & Nginx
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
@@ -184,7 +225,7 @@ services:
       - MinioSettings__AccessKey=minioadmin
       - MinioSettings__SecretKey=minioadmin2026
       - MinioSettings__UseSsl=false
-      - MinioSettings__PublicUrl=http://localhost:9000
+      - MinioSettings__PublicUrl=${MINIO_PUBLIC_URL:-http://localhost:3000}
     depends_on:
       identity-db:
         condition: service_healthy
@@ -192,6 +233,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    networks:
+      - devradar-network
 
   community-api:
     build:
@@ -199,8 +242,8 @@ services:
       dockerfile: Dockerfile
     container_name: devradar-community-api
     restart: always
-    ports:
-      - "5145:8080"
+    # ports:
+    #   - "5145:8080" # Định tuyến tập trung qua Gateway & Nginx
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
@@ -227,6 +270,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    networks:
+      - devradar-network
 
   notification-api:
     build:
@@ -234,8 +279,8 @@ services:
       dockerfile: Dockerfile
     container_name: devradar-notification-api
     restart: always
-    ports:
-      - "5003:8080"
+    # ports:
+    #   - "5003:8080" # Định tuyến tập trung qua Gateway & Nginx
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
@@ -253,6 +298,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    networks:
+      - devradar-network
 
   crawler-api:
     build:
@@ -260,8 +307,8 @@ services:
       dockerfile: Dockerfile
     container_name: devradar-crawler-api
     restart: always
-    ports:
-      - "8000:8000"
+    # ports:
+    #   - "8000:8000" # Định tuyến tập trung qua Gateway & Nginx
     env_file:
       - ./services/CrawlerGithubService/.env
     environment:
@@ -272,6 +319,8 @@ services:
     volumes:
       - ./services/CrawlerGithubService/app:/app/app
       - ./services/CrawlerGithubService/.env:/app/.env
+    networks:
+      - devradar-network
 
   quality-api:
     build:
@@ -279,11 +328,13 @@ services:
       dockerfile: Dockerfile
     container_name: devradar-quality-api
     restart: always
-    ports:
-      - "8001:8001"
+    # ports:
+    #   - "8001:8001" # Định tuyến tập trung qua Gateway & Nginx
+    env_file:
+      - ./services/QualityService/.env
     environment:
-      - MONGODB_URL=mongodb://quality-mongo:27017/quality
-      - MONGODB_DB_NAME=quality
+      - MONGODB_URL=${MONGODB_URL:-mongodb+srv://shopee-sentiment:MChau2506@cluster0.qlbix.mongodb.net/quality}
+      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-quality}
       - ELASTICSEARCH_ENABLED=true
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - REDIS_URL=redis://redis:6379/0
@@ -298,16 +349,16 @@ services:
       - ./services/QualityService/app:/app/app
       - ./services/QualityService/.env:/app/.env
     depends_on:
-      quality-mongo:
-        condition: service_healthy
       elasticsearch:
         condition: service_healthy
       redis:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    networks:
+      - devradar-network
 
-  # ==================== API Gateway ====================
+  # ==================== API Gateway (Nội bộ Docker Network) ====================
 
   gateway-api:
     build:
@@ -332,6 +383,13 @@ services:
       - notification-api
       - crawler-api
       - quality-api
+    networks:
+      - devradar-network
+
+networks:
+  devradar-network:
+    name: devradar_default
+    external: true
 
 volumes:
   identity_pgdata:
