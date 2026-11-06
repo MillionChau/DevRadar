@@ -17,6 +17,22 @@ export const adminApi = {
     });
   },
 
+  /** Lấy danh sách báo cáo bình luận chờ duyệt (UC-29, UC-62) */
+  getCommentReports: async (page = 1, pageSize = 20): Promise<any> => {
+    const res = await apiClient.get<any>('/community/api/PostReports/comments/pending', {
+      params: { page, pageSize }
+    });
+    return res.data || res;
+  },
+
+  /** Xử lý duyệt hoặc bác bỏ báo cáo vi phạm bình luận (UC-63) */
+  reviewCommentReport: async (reportId: string, approve: boolean, note?: string): Promise<any> => {
+    return apiClient.put(`/community/api/PostReports/comments/${reportId}/review`, {
+      approve,
+      reviewNote: note || (approve ? 'Phê duyệt ẩn bình luận vi phạm' : 'Bác bỏ báo cáo')
+    });
+  },
+
   // -------------------------------------------------------------
   // Quản lý Bài viết Admin (UC-52 -> UC-56)
   // -------------------------------------------------------------
@@ -59,10 +75,20 @@ export const adminApi = {
 
   /** Kích hoạt Quality Service phân tích lại chất lượng & toxicity của bài viết */
   recheckPostAI: async (postId: string, content: string): Promise<any> => {
-    return apiClient.post('/quality/api/v1/quality/analyze', {
-      post_id: postId,
+    const res = await apiClient.post<any>('/quality/api/v1/quality/analyze', {
+      content_id: postId,
       content,
+      content_type: 'post',
     });
+    return res.data || res;
+  },
+
+  /** Phân tích hàng loạt nội dung bài viết qua QualityService để lấy điểm số thực tế */
+  analyzePostsBatchQuality: async (
+    items: { content: string; content_id: string; content_type?: string }[]
+  ): Promise<any> => {
+    const res = await apiClient.post<any>('/quality/api/v1/quality/analyze-batch', { items });
+    return res.data || res;
   },
 
   // -------------------------------------------------------------
@@ -71,13 +97,23 @@ export const adminApi = {
   /** Bảng quản trị danh sách toàn bộ bình luận (UC-57) */
   getComments: async (params?: {
     pageNumber?: number;
+    page?: number;
     pageSize?: number;
     status?: number;
-    isApproved?: boolean;
+    isApproved?: number | boolean;
     postId?: string;
     search?: string;
   }): Promise<any> => {
-    return apiClient.get('/community/api/admin/comments', { params });
+    const queryParams: any = {
+      page: params?.page || params?.pageNumber || 1,
+      pageSize: params?.pageSize || 20,
+    };
+    if (params?.status !== undefined) queryParams.status = params.status;
+    if (params?.isApproved !== undefined) queryParams.isApproved = typeof params.isApproved === 'boolean' ? (params.isApproved ? 1 : 0) : params.isApproved;
+    if (params?.postId) queryParams.postId = params.postId;
+    if (params?.search) queryParams.search = params.search;
+    const res = await apiClient.get<any>('/community/api/admin/comments', { params: queryParams });
+    return res.data || res;
   },
 
   /** Chủ động ẩn bình luận vi phạm (UC-59) */
@@ -195,6 +231,7 @@ export const adminApi = {
     username: string;
     display_name?: string;
     role?: string;
+    avatar_url?: string;
     action: string;
     action_label: string;
     category?: string;

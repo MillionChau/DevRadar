@@ -1,5 +1,6 @@
 import { apiClient } from './client';
 import { NotificationItem } from '../types';
+import { getSafeAvatarUrl } from '../utils/avatarHelper';
 
 export const notificationApi = {
   /** Danh sách thông báo của tôi (FR-30, UC-26) */
@@ -25,7 +26,7 @@ export const notificationApi = {
         ? {
             id: n.actorId || n.senderId || 'sys',
             username: n.actorName || n.senderUserName || 'devradar',
-            avatarUrl: n.actorAvatarUrl || n.senderAvatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100',
+            avatarUrl: getSafeAvatarUrl(n.actorAvatarUrl || n.senderAvatarUrl, n.actorName || n.senderUserName, 'Member'),
           }
         : undefined,
     }));
