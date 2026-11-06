@@ -1,28 +1,26 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { AppIcon, IconName } from '../common/Icon';
-import Badge from '../common/Badge';
 
 interface AdminMenuItem {
   label: string;
   path: string;
   icon: IconName;
-  badge?: string;
 }
 
 export const AdminSidebar: React.FC = () => {
   const adminItems: AdminMenuItem[] = [
     { label: 'Quản trị tài khoản', path: '/admin/users', icon: 'user' },
-    { label: 'Quản lý bài viết', path: '/admin/posts', icon: 'fileText' },
-    { label: 'Quản lý báo cáo công nghệ', path: '/admin/tech-reports', icon: 'fileText', badge: 'AI CMS' },
-    { label: 'Hàng chờ kiểm duyệt AI', path: '/admin/reports', icon: 'shield', badge: 'HuggingFace' },
+    { label: 'Quản lý nội dung', path: '/admin/posts', icon: 'fileText' },
+    { label: 'Quản lý báo cáo công nghệ', path: '/admin/tech-reports', icon: 'fileText' },
+    { label: 'Hàng chờ kiểm duyệt AI', path: '/admin/reports', icon: 'shield' },
     { label: 'Cấu hình TechZone', path: '/admin/techzones', icon: 'layers' },
-    { label: 'Giám sát GitHub Crawler', path: '/admin/crawler', icon: 'cpu', badge: 'Port 8000' },
-    { label: 'Nhật ký hệ thống (Logs)', path: '/admin/logs', icon: 'terminal', badge: 'Live' },
+    { label: 'Giám sát GitHub Crawler', path: '/admin/crawler', icon: 'cpu' },
+    { label: 'Nhật ký hệ thống', path: '/admin/logs', icon: 'terminal' },
   ];
 
   const navClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center justify-between px-3.5 py-2.5 text-xs font-medium rounded-btn transition-colors ${
+    `flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium rounded-btn transition-colors ${
       isActive
         ? 'bg-brand-primary text-white font-semibold shadow-sm'
         : 'text-text-muted hover:bg-surface-elevated hover:text-text-main'
@@ -48,15 +46,8 @@ export const AdminSidebar: React.FC = () => {
         </span>
         {adminItems.map((item) => (
           <NavLink key={item.path} to={item.path} className={navClass}>
-            <div className="flex items-center gap-2.5">
-              <AppIcon name={item.icon} size={16} />
-              <span>{item.label}</span>
-            </div>
-            {item.badge && (
-              <Badge variant="reputation" size="sm" className="text-[9px] py-0 px-1.5">
-                {item.badge}
-              </Badge>
-            )}
+            <AppIcon name={item.icon} size={16} />
+            <span>{item.label}</span>
           </NavLink>
         ))}
       </div>

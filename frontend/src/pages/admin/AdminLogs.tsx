@@ -4,8 +4,11 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { AppIcon } from '../../components/common/Icon';
 import { RoleBadge } from '../../components/common/Badge';
+import { Pagination } from '../../components/common/Pagination';
+import { useConfirm } from '../../context/ConfirmContext';
 import { UserRole } from '../../types';
-import { adminApi } from '../../api';
+import { adminApi, authApi } from '../../api';
+import { getSafeAvatarUrl } from '../../utils/avatarHelper';
 
 export interface SystemLogItem {
   id: string;
@@ -50,6 +53,7 @@ interface MicroserviceStatus {
 }
 
 export const AdminLogs: React.FC = () => {
+  const { confirm } = useConfirm();
   // Main Tab: 'system' (Nhật ký Hệ thống) hoặc 'user' (Nhật ký Người dùng)
   const [mainTab, setMainTab] = useState<'system' | 'user'>('system');
 
@@ -60,6 +64,8 @@ export const AdminLogs: React.FC = () => {
   const [isLiveStream, setIsLiveStream] = useState(true);
   const [viewMode, setViewMode] = useState<'table' | 'terminal'>('table');
   const [selectedSystemLog, setSelectedSystemLog] = useState<SystemLogItem | null>(null);
+  const [systemPage, setSystemPage] = useState(1);
+  const [systemPageSize, setSystemPageSize] = useState(20);
 
   // System filters
   const [serviceFilter, setServiceFilter] = useState('ALL');
@@ -91,6 +97,8 @@ export const AdminLogs: React.FC = () => {
   const [userLogs, setUserLogs] = useState<UserActivityLogItem[]>([]);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [selectedUserLog, setSelectedUserLog] = useState<UserActivityLogItem | null>(null);
+  const [userPage, setUserPage] = useState(1);
+  const [userPageSize, setUserPageSize] = useState(20);
 
   // User filters
   const [userRoleFilter, setUserRoleFilter] = useState('ALL');
@@ -120,9 +128,28 @@ export const AdminLogs: React.FC = () => {
 
       if (res) {
         setSystemLogs(res.items || []);
-        setTotalUnfilteredSystem(res.total_unfiltered || res.total || 0);
-        if (res.metrics) setSystemMetrics(res.metrics);
-        if (res.services && Array.isArray(res.services)) setServices(res.services);
+        setTotalUnfilteredSystem(res.total_unfiltered || res.total || (res.items ? res.items.length : 0));
+        if (res.metrics) {
+          setSystemMetrics({
+            error_count: res.metrics.errors ?? res.metrics.error_count ?? 0,
+            warning_count: res.metrics.warnings ?? res.metrics.warning_count ?? 0,
+            info_count: res.metrics.info ?? res.metrics.info_count ?? 0,
+            avg_latency_ms: res.metrics.avg_latency_ms ?? 24,
+            error_rate_pct: res.metrics.error_rate ?? res.metrics.error_rate_pct ?? 0,
+          });
+        }
+        if (res.services_breakdown && Array.isArray(res.services_breakdown)) {
+          setServices(
+            res.services_breakdown.map((s: any) => ({
+              name: s.service,
+              port: s.port,
+              status: 'ONLINE',
+              type: s.tech,
+            }))
+          );
+        } else if (res.services && Array.isArray(res.services)) {
+          setServices(res.services);
+        }
       }
     } catch (err) {
       console.warn('Could not fetch system logs:', err);
@@ -144,7 +171,41 @@ export const AdminLogs: React.FC = () => {
       });
 
       if (res) {
-        setUserLogs(res.items || []);
+        const rawItems: UserActivityLogItem[] = res.items || [];
+        
+        // Enrich avatars from IdentityService
+        try {
+          const usersRes = await adminApi.getUsers(1, 1000);
+          const usersList = Array.isArray(usersRes) ? usersRes : usersRes?.items || usersRes?.data || [];
+          const userAvatarMap = new Map<string, string>();
+          if (Array.isArray(usersList)) {
+            usersList.forEach((u: any) => {
+              if (u.userName && u.avatarUrl) {
+                userAvatarMap.set(u.userName.toLowerCase(), u.avatarUrl);
+              }
+              if (u.email && u.avatarUrl) {
+                userAvatarMap.set(u.email.toLowerCase(), u.avatarUrl);
+              }
+            });
+          }
+
+          const enriched = rawItems.map((item) => {
+            const liveAvatar = userAvatarMap.get((item.username || '').toLowerCase());
+            return {
+              ...item,
+              avatar_url: getSafeAvatarUrl(liveAvatar || item.avatar_url, item.username || item.display_name, item.role),
+            };
+          });
+
+          setUserLogs(enriched);
+        } catch {
+          const enriched = rawItems.map((item) => ({
+            ...item,
+            avatar_url: getSafeAvatarUrl(item.avatar_url, item.username || item.display_name, item.role),
+          }));
+          setUserLogs(enriched);
+        }
+
         if (res.metrics) setUserMetrics(res.metrics);
       }
     } catch (err) {
@@ -211,12 +272,18 @@ export const AdminLogs: React.FC = () => {
   const [isClearingLogs, setIsClearingLogs] = useState(false);
 
   const handleClearUserLogs = async (clearType: 'mock' | 'all') => {
-    const confirmMsg =
-      clearType === 'mock'
+    const isMock = clearType === 'mock';
+    const ok = await confirm({
+      title: isMock ? 'Xóa dữ liệu mẫu (Mock Logs)' : 'Xóa toàn bộ nhật ký người dùng',
+      message: isMock
         ? 'Bạn có chắc chắn muốn xóa tất cả bản ghi dữ liệu mẫu (mock)? Các hành động thực tế tiếp theo của người dùng sẽ được ghi nhận trực tiếp.'
-        : 'CẢNH BÁO: Bạn có chắc chắn muốn làm sạch toàn bộ lịch sử nhật ký người dùng? Hành động này không thể hoàn tác.';
+        : 'CẢNH BÁO: Bạn có chắc chắn muốn làm sạch toàn bộ lịch sử nhật ký người dùng? Hành động này không thể hoàn tác.',
+      confirmText: isMock ? 'Xóa dữ liệu mẫu' : 'Xóa toàn bộ',
+      cancelText: 'Hủy bỏ',
+      variant: 'danger',
+    });
 
-    if (!window.confirm(confirmMsg)) return;
+    if (!ok) return;
 
     setIsClearingLogs(true);
     try {
@@ -418,7 +485,7 @@ export const AdminLogs: React.FC = () => {
 
             <Card variant="surface" className="border-surface-border">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-text-muted font-medium uppercase tracking-wider">Tỷ lệ Lỗi (Error Rate)</span>
+                <span className="text-xs text-text-muted font-medium uppercase tracking-wider">Tỷ lệ Lỗi</span>
                 <AppIcon name="alertTriangle" size={18} className="text-status-danger" />
               </div>
               <div className="mt-2 text-2xl font-bold text-text-main font-mono">
@@ -464,27 +531,27 @@ export const AdminLogs: React.FC = () => {
                     onChange={(e) => setServiceFilter(e.target.value)}
                   >
                     <option value="ALL">Tất cả Microservices</option>
-                    <option value="GatewayService">GatewayService (:5000)</option>
-                    <option value="CrawlerGithubService">CrawlerGithubService (:8000)</option>
-                    <option value="IdentityService">IdentityService (:5002)</option>
-                    <option value="CommunityService">CommunityService (:5145)</option>
-                    <option value="NotificationService">NotificationService (:5003)</option>
-                    <option value="QualityService">QualityService (:8001)</option>
+                    <option value="GatewayService">GatewayService</option>
+                    <option value="CrawlerGithubService">CrawlerGithubService</option>
+                    <option value="IdentityService">IdentityService</option>
+                    <option value="CommunityService">CommunityService</option>
+                    <option value="NotificationService">NotificationService</option>
+                    <option value="QualityService">QualityService</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-text-muted mb-1">Cấp độ (Level):</label>
+                  <label className="block text-[11px] font-semibold text-text-muted mb-1">Cấp độ:</label>
                   <select
                     className="w-full bg-surface-elevated border border-surface-border text-text-main text-xs rounded-btn px-2.5 h-8 focus:outline-none focus:border-brand-primary"
                     value={levelFilter}
                     onChange={(e) => setLevelFilter(e.target.value)}
                   >
                     <option value="ALL">Tất cả cấp độ</option>
-                    <option value="INFO">INFO (Thông tin)</option>
-                    <option value="SUCCESS">SUCCESS (Thành công)</option>
-                    <option value="WARNING">WARNING (Cảnh báo)</option>
-                    <option value="ERROR">ERROR (Lỗi 5xx / Thất bại)</option>
+                    <option value="INFO">Thông tin INFO</option>
+                    <option value="SUCCESS">Thành công SUCCESS</option>
+                    <option value="WARNING">Cảnh báo WARNING</option>
+                    <option value="ERROR">Lỗi ERROR</option>
                   </select>
                 </div>
 
@@ -556,20 +623,22 @@ export const AdminLogs: React.FC = () => {
 
           {/* System Display: Table or Terminal */}
           {viewMode === 'table' ? (
-            <Card variant="surface" className="overflow-x-auto p-0 border border-surface-border">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-surface-elevated/70 border-b border-surface-border text-text-muted text-[11px] uppercase font-semibold">
-                  <tr>
-                    <th className="py-2.5 px-3">Thời gian</th>
-                    <th className="py-2.5 px-3">Level</th>
-                    <th className="py-2.5 px-3">Dịch vụ</th>
-                    <th className="py-2.5 px-3">Method / Action</th>
-                    <th className="py-2.5 px-3">Thông điệp / Path</th>
-                    <th className="py-2.5 px-3">Độ trễ</th>
-                    <th className="py-2.5 px-3">Trace ID</th>
-                    <th className="py-2.5 px-3 text-right">Chi tiết</th>
-                  </tr>
-                </thead>
+            <>
+              <Card variant="surface" padding="none" className="overflow-hidden border border-surface-border shadow-sm">
+                <div className="overflow-x-auto max-h-[750px] overflow-y-auto">
+                  <table className="w-full text-left text-sm border-collapse">
+                    <thead className="sticky top-0 z-20 bg-surface-elevated border-b border-surface-border text-text-muted text-[11px] uppercase font-semibold shadow-sm">
+                      <tr>
+                        <th className="py-2.5 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border">Thời gian</th>
+                        <th className="py-2.5 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border">Level</th>
+                        <th className="py-2.5 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border">Dịch vụ</th>
+                        <th className="py-2.5 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border">Method / Action</th>
+                        <th className="py-2.5 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border">Thông điệp / Path</th>
+                        <th className="py-2.5 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border">Độ trễ</th>
+                        <th className="py-2.5 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border">Trace ID</th>
+                        <th className="py-2.5 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border text-right">Chi tiết</th>
+                      </tr>
+                    </thead>
                 <tbody className="divide-y divide-surface-border/60">
                   {isLoadingSystem && systemLogs.length === 0 ? (
                     <tr>
@@ -591,7 +660,7 @@ export const AdminLogs: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    systemLogs.map((log) => (
+                    systemLogs.slice((systemPage - 1) * systemPageSize, systemPage * systemPageSize).map((log) => (
                       <tr key={log.id} className="hover:bg-surface-elevated/40 transition-colors text-xs font-mono">
                         <td className="py-2.5 px-3 text-text-muted whitespace-nowrap text-[11px]">
                           {new Date(log.timestamp).toLocaleTimeString('vi-VN', {
@@ -651,7 +720,7 @@ export const AdminLogs: React.FC = () => {
                               type="button"
                               onClick={() => handleCopy(log.trace_id!)}
                               className="hover:text-brand-primary underline truncate max-w-[90px] block"
-                              title={`Trace: ${log.trace_id} (Click to copy)`}
+                              title={`Trace: ${log.trace_id} - Click to copy`}
                             >
                               {log.trace_id.slice(0, 8)}…
                             </button>
@@ -669,7 +738,22 @@ export const AdminLogs: React.FC = () => {
                   )}
                 </tbody>
               </table>
+              </div>
             </Card>
+
+            <Pagination
+              currentPage={systemPage}
+              totalPages={Math.max(1, Math.ceil(systemLogs.length / systemPageSize))}
+              totalCount={systemLogs.length}
+              pageSize={systemPageSize}
+              onPageChange={setSystemPage}
+              onPageSizeChange={(sz) => {
+                setSystemPageSize(sz);
+                setSystemPage(1);
+              }}
+              disabled={isLoadingSystem}
+            />
+          </>
           ) : (
             <div className="rounded-xl border border-surface-border bg-[#0d1117] text-[#c9d1d9] font-mono p-4 text-xs shadow-2xl overflow-hidden flex flex-col h-[600px]">
               <div className="flex items-center justify-between pb-3 mb-2 border-b border-[#30363d]">
@@ -791,17 +875,17 @@ export const AdminLogs: React.FC = () => {
           <Card variant="elevated" className="border-surface-border space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
-                <label className="block text-[11px] font-semibold text-text-muted mb-1">Lọc theo Vai trò (Role):</label>
+                <label className="block text-[11px] font-semibold text-text-muted mb-1">Lọc theo Vai trò:</label>
                 <select
                   className="w-full bg-surface-elevated border border-surface-border text-text-main text-xs rounded-btn px-2.5 h-8 focus:outline-none focus:border-brand-primary"
                   value={userRoleFilter}
                   onChange={(e) => setUserRoleFilter(e.target.value)}
                 >
                   <option value="ALL">Tất cả vai trò</option>
-                  <option value="Admin">Admin (Quản trị viên)</option>
-                  <option value="Moderator">Moderator (Kiểm duyệt viên)</option>
-                  <option value="Member">Member (Thành viên chính thức)</option>
-                  <option value="Guest">Guest (Khách vãng lai)</option>
+                  <option value="Admin">Quản trị viên</option>
+                  <option value="Moderator">Kiểm duyệt viên</option>
+                  <option value="Member">Thành viên chính thức</option>
+                  <option value="Guest">Khách vãng lai</option>
                 </select>
               </div>
 
@@ -813,12 +897,12 @@ export const AdminLogs: React.FC = () => {
                   onChange={(e) => setUserActionFilter(e.target.value)}
                 >
                   <option value="ALL">Tất cả nhóm hành động</option>
-                  <option value="CONTENT">Nội dung (Bài viết, Bình luận, Ghim)</option>
-                  <option value="MODERATION">Kiểm duyệt (Phê duyệt ẩn, Xử lý báo cáo)</option>
-                  <option value="SECURITY">An ninh (Khóa tài khoản, Đăng nhập sai)</option>
-                  <option value="ANALYTICS">Phân tích (Tra cứu Repo, So sánh, AI Report)</option>
-                  <option value="ACCOUNT">Tài khoản (Đổi mật khẩu, Quyền riêng tư)</option>
-                  <option value="SYSTEM">Hệ thống (Cấu hình Crawler)</option>
+                  <option value="CONTENT">Nội dung: Bài viết, Bình luận, Ghim</option>
+                  <option value="MODERATION">Kiểm duyệt: Phê duyệt ẩn, Xử lý báo cáo</option>
+                  <option value="SECURITY">An ninh: Khóa tài khoản, Đăng nhập sai</option>
+                  <option value="ANALYTICS">Phân tích: Tra cứu Repo, So sánh, AI Report</option>
+                  <option value="ACCOUNT">Tài khoản: Đổi mật khẩu, Quyền riêng tư</option>
+                  <option value="SYSTEM">Hệ thống: Cấu hình Crawler</option>
                 </select>
               </div>
 
@@ -830,9 +914,9 @@ export const AdminLogs: React.FC = () => {
                   onChange={(e) => setUserStatusFilter(e.target.value)}
                 >
                   <option value="ALL">Tất cả trạng thái</option>
-                  <option value="SUCCESS">Thành công (SUCCESS)</option>
-                  <option value="BLOCKED">Bị chặn (BLOCKED)</option>
-                  <option value="FAILED">Thất bại (FAILED)</option>
+                  <option value="SUCCESS">Thành công</option>
+                  <option value="BLOCKED">Bị chặn</option>
+                  <option value="FAILED">Thất bại</option>
                 </select>
               </div>
 
@@ -887,9 +971,9 @@ export const AdminLogs: React.FC = () => {
                   onClick={() => handleClearUserLogs('mock')}
                   isLoading={isClearingLogs}
                   className="h-7 text-xs text-text-muted hover:text-status-warning"
-                  title="Xóa các bản ghi mẫu (mock) để chỉ giữ lại nhật ký hành động thực tế"
+                  title="Xóa các bản ghi mẫu để chỉ giữ lại nhật ký hành động thực tế"
                 >
-                  Xóa Log Mẫu (Mock)
+                  Xóa Log Mẫu
                 </Button>
                 <Button
                   size="sm"
@@ -907,20 +991,21 @@ export const AdminLogs: React.FC = () => {
           </Card>
 
           {/* User Activity Table */}
-          <Card variant="surface" className="overflow-x-auto p-0 border border-surface-border">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-surface-elevated/70 border-b border-surface-border text-text-muted text-[11px] uppercase font-semibold">
-                <tr>
-                  <th className="py-2.5 px-3">Thời gian</th>
-                  <th className="py-2.5 px-3">Người dùng</th>
-                  <th className="py-2.5 px-3">Nhóm</th>
-                  <th className="py-2.5 px-3">Hành động thực hiện</th>
-                  <th className="py-2.5 px-3">Đối tượng tác động</th>
-                  <th className="py-2.5 px-3">IP &amp; Thiết bị</th>
-                  <th className="py-2.5 px-3">Trạng thái</th>
-                  <th className="py-2.5 px-3 text-right">Chi tiết</th>
-                </tr>
-              </thead>
+          <Card variant="surface" padding="none" className="overflow-hidden border border-surface-border shadow-sm">
+            <div className="overflow-x-auto max-h-[750px] overflow-y-auto">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead className="sticky top-0 z-20 bg-surface-elevated border-b border-surface-border text-text-muted text-[11px] uppercase font-semibold shadow-sm">
+                  <tr>
+                    <th className="py-2.5 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border">Thời gian</th>
+                    <th className="py-2.5 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border">Người dùng</th>
+                    <th className="py-2.5 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border">Nhóm</th>
+                    <th className="py-2.5 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border">Hành động thực hiện</th>
+                    <th className="py-2.5 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border">Đối tượng tác động</th>
+                    <th className="py-2.5 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border">IP &amp; Thiết bị</th>
+                    <th className="py-2.5 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border">Trạng thái</th>
+                    <th className="py-2.5 px-3 bg-surface-elevated sticky top-0 border-b border-surface-border text-right">Chi tiết</th>
+                  </tr>
+                </thead>
               <tbody className="divide-y divide-surface-border/60">
                 {isLoadingUser && userLogs.length === 0 ? (
                   <tr>
@@ -942,7 +1027,7 @@ export const AdminLogs: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  userLogs.map((it) => (
+                  userLogs.slice((userPage - 1) * userPageSize, userPage * userPageSize).map((it) => (
                     <tr key={it.id} className="hover:bg-surface-elevated/40 transition-colors text-xs font-sans">
                       {/* Time */}
                       <td className="py-2.5 px-3 whitespace-nowrap text-text-muted text-[11px] font-mono">
@@ -962,7 +1047,7 @@ export const AdminLogs: React.FC = () => {
                       <td className="py-2.5 px-3 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <img
-                            src={it.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100'}
+                            src={getSafeAvatarUrl(it.avatar_url, it.username || it.display_name, it.role)}
                             alt=""
                             className="w-6 h-6 rounded-full object-cover flex-shrink-0 border border-surface-border"
                           />
@@ -1025,7 +1110,21 @@ export const AdminLogs: React.FC = () => {
                 )}
               </tbody>
             </table>
+            </div>
           </Card>
+
+          <Pagination
+            currentPage={userPage}
+            totalPages={Math.max(1, Math.ceil(userLogs.length / userPageSize))}
+            totalCount={userLogs.length}
+            pageSize={userPageSize}
+            onPageChange={setUserPage}
+            onPageSizeChange={(sz) => {
+              setUserPageSize(sz);
+              setUserPage(1);
+            }}
+            disabled={isLoadingUser}
+          />
         </div>
       )}
 
@@ -1086,7 +1185,7 @@ export const AdminLogs: React.FC = () => {
             </div>
 
             <div>
-              <h4 className="text-xs font-bold text-text-main uppercase mb-1.5">Nội dung Thông điệp (Message):</h4>
+              <h4 className="text-xs font-bold text-text-main uppercase mb-1.5">Nội dung Thông điệp:</h4>
               <div className="p-3 rounded-lg bg-surface border border-surface-border font-mono text-xs text-text-main break-all">
                 {selectedSystemLog.message}
               </div>
@@ -1130,7 +1229,7 @@ export const AdminLogs: React.FC = () => {
             {/* User Profile Summary */}
             <div className="flex items-center gap-3 p-3 rounded-lg bg-surface-elevated border border-surface-border">
               <img
-                src={selectedUserLog.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100'}
+                src={getSafeAvatarUrl(selectedUserLog.avatar_url, selectedUserLog.username || selectedUserLog.display_name, selectedUserLog.role)}
                 alt=""
                 className="w-10 h-10 rounded-full object-cover border border-surface-border"
               />
@@ -1189,7 +1288,7 @@ export const AdminLogs: React.FC = () => {
             {/* Additional details */}
             {selectedUserLog.details && Object.keys(selectedUserLog.details).length > 0 && (
               <div>
-                <h4 className="text-xs font-bold text-text-main uppercase mb-1">Dữ liệu Chi tiết (Context Payload):</h4>
+                <h4 className="text-xs font-bold text-text-main uppercase mb-1">Dữ liệu Chi tiết:</h4>
                 <pre className="p-3 rounded-lg bg-surface-elevated border border-surface-border font-mono text-[11px] text-text-main overflow-x-auto max-h-48">
                   {JSON.stringify(selectedUserLog.details, null, 2)}
                 </pre>

@@ -5,7 +5,10 @@ import { Input } from '../../components/common/Input';
 import { RoleBadge, ReputationBadge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
 import { AppIcon } from '../../components/common/Icon';
+import { Pagination } from '../../components/common/Pagination';
+import { useConfirm } from '../../context/ConfirmContext';
 import { UserRole } from '../../types';
+import { getSafeAvatarUrl } from '../../utils/avatarHelper';
 
 interface ManagedUser {
   id: string;
@@ -23,31 +26,39 @@ import { adminApi } from '../../api';
 import { recordActivity } from '../../utils/activityLogger';
 
 export const AdminUsers: React.FC = () => {
+  const { confirm } = useConfirm();
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'All' | UserRole>('All');
   const [selectedUser, setSelectedUser] = useState<ManagedUser | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   React.useEffect(() => {
     setIsLoading(true);
     adminApi
-      .getUsers(1, 50, searchQuery)
+      .getUsers(1, 1000, searchQuery)
       .then((data: any) => {
         const raw = Array.isArray(data) ? data : data?.items || data?.data || [];
         if (Array.isArray(raw)) {
-          const live: ManagedUser[] = raw.map((u: any) => ({
-            id: u.id,
-            userName: u.userName || 'user',
-            displayName: u.fullName || u.displayName || u.userName || 'DevRadar Member',
-            email: u.email || 'user@devradar.io',
-            avatarUrl: u.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100',
-            reputationPoints: u.reputationPoints ?? 1200,
-            role: (Array.isArray(u.roles) && u.roles.length > 0 ? u.roles[0] : (u.role || 'Member')) as UserRole,
-            isBanned: u.status === 2, // 2 = Locked/Banned
-            joinedDate: u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : 'Mới tham gia',
-          }));
+          const live: ManagedUser[] = raw.map((u: any) => {
+            const role = (Array.isArray(u.roles) && u.roles.length > 0 ? u.roles[0] : (u.role || 'Member')) as UserRole;
+            const uname = u.userName || 'user';
+            const dname = u.fullName || u.displayName || uname;
+            return {
+              id: u.id,
+              userName: uname,
+              displayName: dname,
+              email: u.email || 'user@devradar.io',
+              avatarUrl: getSafeAvatarUrl(u.avatarUrl, uname || dname, role),
+              reputationPoints: u.reputationPoints ?? 1200,
+              role,
+              isBanned: u.status === 2, // 2 = Locked/Banned
+              joinedDate: u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : 'Mới tham gia',
+            };
+          });
           setUsers(live);
         }
       })
@@ -67,6 +78,18 @@ export const AdminUsers: React.FC = () => {
     const matchesRole = roleFilter === 'All' || user.role === roleFilter;
     return matchesSearch && matchesRole;
   });
+
+  // Reset page when filter or search changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, roleFilter]);
+
+  const totalCount = filteredUsers.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const handleToggleBan = async (user: ManagedUser) => {
     const nextBanned = !user.isBanned;
@@ -101,7 +124,15 @@ export const AdminUsers: React.FC = () => {
 
   const handleDeleteUser = async (userId: string) => {
     const targetUser = users.find(u => u.id === userId);
-    if (!confirm('Bạn có chắc chắn muốn xóa tài khoản người dùng này khỏi hệ thống?')) return;
+    const ok = await confirm({
+      title: 'Xóa tài khoản người dùng',
+      message: `Bạn có chắc chắn muốn xóa tài khoản @${targetUser?.userName || userId} (${targetUser?.displayName || targetUser?.email || ''}) khỏi hệ thống? Thao tác này không thể hoàn tác.`,
+      confirmText: 'Xóa tài khoản',
+      cancelText: 'Hủy bỏ',
+      variant: 'danger',
+    });
+    if (!ok) return;
+
     setUsers(prev => prev.filter(u => u.id !== userId));
     try {
       await adminApi.deleteUser(userId);
@@ -184,19 +215,20 @@ export const AdminUsers: React.FC = () => {
       </div>
 
       {/* Users Table */}
-      <Card variant="surface" className="overflow-x-auto p-0 border border-surface-border">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-surface-elevated/70 border-b border-surface-border text-text-muted text-xs uppercase font-semibold">
-            <tr>
-              <th className="py-3 px-4">User</th>
-              <th className="py-3 px-4">Role</th>
-              <th className="py-3 px-4">Reputation</th>
-              <th className="py-3 px-4">Joined</th>
-              <th className="py-3 px-4">Status</th>
-              <th className="py-3 px-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-surface-border/60">
+      <Card variant="surface" padding="none" className="overflow-hidden border border-surface-border shadow-sm">
+        <div className="overflow-x-auto max-h-[750px] overflow-y-auto">
+          <table className="w-full text-left text-sm border-collapse">
+            <thead className="sticky top-0 z-20 bg-surface-elevated border-b border-surface-border text-text-muted text-xs uppercase font-semibold shadow-sm">
+              <tr>
+                <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border">User</th>
+                <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border">Role</th>
+                <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border">Reputation</th>
+                <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border">Joined</th>
+                <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border">Status</th>
+                <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-surface-border/60">
             {isLoading ? (
               <tr>
                 <td colSpan={6} className="py-12 text-center text-text-muted">
@@ -217,7 +249,7 @@ export const AdminUsers: React.FC = () => {
                 </td>
               </tr>
             ) : (
-              filteredUsers.map(u => (
+              paginatedUsers.map(u => (
               <tr key={u.id} className="hover:bg-surface-elevated/40 transition-colors">
                 <td className="py-3 px-4">
                   <div className="flex items-center gap-3">
@@ -288,7 +320,21 @@ export const AdminUsers: React.FC = () => {
             )))}
           </tbody>
         </table>
+        </div>
       </Card>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        pageSize={pageSize}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={(sz) => {
+          setPageSize(sz);
+          setCurrentPage(1);
+        }}
+        disabled={isLoading}
+      />
 
       {/* Role Edit Modal */}
       {selectedUser && (
