@@ -117,7 +117,7 @@ export const Register: React.FC = () => {
           )}
 
           <Input
-            label="Tên hiển thị (Display Name)"
+            label="Tên hiển thị"
             type="text"
             icon="user"
             placeholder="Nguyen Van A"

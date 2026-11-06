@@ -80,7 +80,7 @@ export const ForgotPassword: React.FC = () => {
         ) : (
           <form onSubmit={handleResetPassword} className="flex flex-col gap-4">
             <Input
-              label="Mã xác thực OTP (6 chữ số)"
+              label="Mã xác thực OTP"
               type="text"
               icon="shield"
               placeholder="123456"

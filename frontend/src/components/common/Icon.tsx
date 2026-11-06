@@ -74,7 +74,16 @@ import {
   AtSign,
   Server,
   Reply,
-  Copy
+  Copy,
+  Zap,
+  Flame,
+  Trophy,
+  Medal,
+  Crown,
+  Sprout,
+  Sun,
+  Moon,
+  Monitor
 } from 'lucide';
 
 // Official GitHub SVG on 24x24 grid for Morphicons compatibility
@@ -236,7 +245,25 @@ export const ICON_MAP: Record<string, any> = {
   reply: Reply,
   Reply: Reply,
   copy: Copy,
-  Copy: Copy
+  Copy: Copy,
+  zap: Zap,
+  Zap: Zap,
+  flame: Flame,
+  Flame: Flame,
+  trophy: Trophy,
+  Trophy: Trophy,
+  medal: Medal,
+  Medal: Medal,
+  crown: Crown,
+  Crown: Crown,
+  sprout: Sprout,
+  Sprout: Sprout,
+  sun: Sun,
+  Sun: Sun,
+  moon: Moon,
+  Moon: Moon,
+  monitor: Monitor,
+  Monitor: Monitor
 };
 
 export type IconName = string;

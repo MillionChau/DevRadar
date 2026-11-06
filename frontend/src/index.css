@@ -4,52 +4,65 @@
 
 @layer base {
   :root {
-    --color-bg: #090D16;
-    --color-card: #0F172A;
-    --color-elevated: #1E293B;
-    --color-border: #334155;
-    --color-primary: #2563EB;
-    --color-primary-hover: #1D4ED8;
-    --color-secondary: #38BDF8;
-    --color-accent: #818CF8;
-    --color-text-main: #F8FAFC;
-    --color-text-muted: #94A3B8;
-    --color-text-subtle: #64748B;
+    /* Giao diện Sáng (Light Mode) */
+    --color-bg: 248 250 252;          /* #F8FAFC Slate 50 */
+    --color-card: 255 255 255;        /* #FFFFFF Pure White */
+    --color-elevated: 241 245 249;    /* #F1F5F9 Slate 100 */
+    --color-border: 226 232 240;      /* #E2E8F0 Slate 200 */
+    --color-muted: 203 213 225;       /* #CBD5E1 Slate 300 */
+    --color-text-main: 15 23 42;      /* #0F172A Slate 900 */
+    --color-text-muted: 71 85 105;    /* #475569 Slate 600 */
+    --color-text-subtle: 148 163 184; /* #94A3B8 Slate 400 */
+    --color-brand-secondary: 2 132 199; /* Sky 600 */
+  }
+
+  .dark {
+    /* Giao diện Tối (Dark Mode) */
+    --color-bg: 9 13 22;              /* #090D16 Deep Space */
+    --color-card: 15 23 42;           /* #0F172A Slate 900 */
+    --color-elevated: 30 41 59;       /* #1E293B Slate 800 */
+    --color-border: 51 65 85;         /* #334155 Slate 700 */
+    --color-muted: 71 85 105;         /* #475569 Slate 600 */
+    --color-text-main: 248 250 252;   /* #F8FAFC Slate 50 */
+    --color-text-muted: 148 163 184;  /* #94A3B8 Slate 400 */
+    --color-text-subtle: 100 116 139; /* #64748B Slate 500 */
+    --color-brand-secondary: 56 189 248; /* #38BDF8 Sky 400 */
   }
 
   body {
-    background-color: #090D16;
-    color: #F8FAFC;
+    background-color: rgb(var(--color-bg));
+    color: rgb(var(--color-text-main));
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
-  /* Custom scrollbar */
+  /* Custom scrollbar responsive theo theme */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #090D16;
+    background: rgb(var(--color-bg));
   }
   ::-webkit-scrollbar-thumb {
-    background: #334155;
+    background: rgb(var(--color-border));
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #475569;
+    background: rgb(var(--color-muted));
   }
 }
 
 @layer utilities {
   .radar-grid {
-    stroke: #334155;
+    stroke: rgb(var(--color-border));
     stroke-width: 1px;
   }
   .radar-fill {
     fill: rgba(37, 99, 235, 0.25);
-    stroke: #38BDF8;
+    stroke: rgb(var(--color-brand-secondary));
     stroke-width: 2px;
   }
 }

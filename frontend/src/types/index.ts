@@ -55,11 +55,14 @@ export interface Post {
     avatarUrl?: string;
     reputationPoints?: number;
     reputationScore?: number;
+    tierTitle?: string;
+    tierBadge?: string;
     role?: string;
     headline?: string;
   };
   techZoneId?: string;
   techZoneName?: string;
+  techZoneSlug?: string;
   techZone?: {
     id: string;
     name: string;
@@ -101,6 +104,8 @@ export interface Comment {
   likeCount: number;
   isLiked?: boolean;
   toxicityScore?: number;
+  status?: number;
+  isApproved?: number;
   createdAt: string;
 }
 

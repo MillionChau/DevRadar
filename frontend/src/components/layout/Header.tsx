@@ -4,12 +4,16 @@ import { AppIcon } from '../common/Icon';
 import Button from '../common/Button';
 import Badge from '../common/Badge';
 import { Tooltip } from '../common/Tooltip';
+import ThemeToggle from '../common/ThemeToggle';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { UserRole, NotificationItem } from '../../types';
 import { notificationApi } from '../../api';
+import { getSafeAvatarUrl } from '../../utils/avatarHelper';
 
 export const Header: React.FC = () => {
   const { user, role, logout } = useAuth();
+  const { theme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -159,7 +163,7 @@ export const Header: React.FC = () => {
           </div>
           <input
             type="text"
-            placeholder="Tìm kiếm bài viết, công nghệ, tác giả... (Ctrl + K)"
+            placeholder="Tìm kiếm bài viết, công nghệ, tác giả..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-surface-elevated border border-surface-border text-text-main text-xs rounded-btn pl-9 pr-12 py-2 h-9 placeholder:text-text-subtle focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
@@ -194,7 +198,10 @@ export const Header: React.FC = () => {
       </nav>
 
       {/* Right Header Actions */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Nút cài đặt chuyển đổi Giao diện Sáng / Tối */}
+        <ThemeToggle />
+
         {role !== 'Guest' && user ? (
           <>
             {/* Create Post Button (SCR-08) */}
@@ -351,7 +358,7 @@ export const Header: React.FC = () => {
                 className="flex items-center gap-2.5 p-1 rounded-btn hover:bg-surface-elevated transition-colors"
               >
                 <img
-                  src={user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100'}
+                  src={getSafeAvatarUrl(user.avatarUrl, user.userName || user.displayName, role)}
                   alt={user.displayName || user.userName}
                   className="w-8 h-8 rounded-full border border-surface-border object-cover"
                 />
@@ -414,6 +421,19 @@ export const Header: React.FC = () => {
                       <span>Trang Quản trị Admin</span>
                     </Link>
                   )}
+
+                  <div className="my-1 border-t border-surface-border" />
+
+                  {/* Cài đặt Giao diện Sáng / Tối trong User Menu */}
+                  <div className="px-3 py-2">
+                    <div className="flex items-center justify-between text-xs mb-1.5">
+                      <span className="text-text-muted font-medium">Giao diện</span>
+                      <span className="text-[11px] text-text-subtle font-mono">
+                        {theme === 'light' ? 'Sáng' : theme === 'dark' ? 'Tối' : 'Hệ thống'}
+                      </span>
+                    </div>
+                    <ThemeToggle variant="segmented" className="w-full justify-between" />
+                  </div>
 
                   <div className="my-1 border-t border-surface-border" />
 
