@@ -75,6 +75,43 @@ export const analyticsApi = {
     return Array.isArray(res) ? res : res.data || [];
   },
 
+  /** Lấy danh sách Repositories từ MongoDB với bộ lọc ngôn ngữ, số sao, điểm số và phân trang */
+  getRepositories: async (params?: {
+    page?: number;
+    page_size?: number;
+    search?: string;
+    language?: string;
+    min_stars?: number;
+    max_stars?: number;
+    min_score?: number;
+    max_score?: number;
+    sort_by?: string;
+    sort_order?: string;
+  }): Promise<{
+    items: Array<{
+      id: string;
+      full_name: string;
+      name: string;
+      owner: string;
+      primary_language: string;
+      stars: number;
+      forks: number;
+      open_issues: number;
+      health_score: number;
+      health_level: string;
+      grade: string;
+      description: string;
+      last_synced_at: string;
+    }>;
+    total: number;
+    page: number;
+    page_size: number;
+    total_pages: number;
+    languages: string[];
+  }> => {
+    return apiClient.get('/crawler/analytics/repositories', { params });
+  },
+
   /** Xem danh sách báo cáo phân tích công nghệ tự động (LLM AI Reports UC-35 to UC-38) */
   getReports: async (limit = 10, category?: string): Promise<any[]> => {
     const params: any = { limit };
@@ -215,6 +252,11 @@ export const analyticsApi = {
     languages?: string;
   }): Promise<any> => {
     return apiClient.get('/crawler/analytics/trend-chart', { params });
+  },
+
+  /** Lấy danh mục đầy đủ các Ngôn ngữ & Framework thực tế từ cơ sở dữ liệu MongoDB Atlas */
+  getTechCatalog: async (): Promise<any> => {
+    return apiClient.get('/crawler/analytics/tech-catalog');
   },
 
   /** Lấy dữ liệu 5 trục Radar của một hệ sinh thái công nghệ (UC-12) */

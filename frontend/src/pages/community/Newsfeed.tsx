@@ -227,7 +227,7 @@ export const Newsfeed: React.FC = () => {
               name: t.name,
               score,
               tier,
-              trend: t.trend || (t.growth_rate ? `↗ +${(t.growth_rate * 100).toFixed(1)}%` : '↗ +3.5%'),
+              trend: (t.trend ? String(t.trend).replace(/^[\u2190-\u2199\s]+/, '') : '') || (t.growth_rate ? `+${(t.growth_rate * 100).toFixed(1)}%` : '+3.5%'),
               fillPct: Math.min(100, Math.max(10, score)),
             };
           });
@@ -523,8 +523,9 @@ export const Newsfeed: React.FC = () => {
           {selectedTag && (
             <div className="flex items-center gap-2 text-xs">
               <span className="text-text-subtle">Lọc theo:</span>
-              <Badge variant="tech" size="sm" onClick={() => setSelectedTag(null)}>
-                #{selectedTag} ✕
+              <Badge variant="tech" size="sm" onClick={() => setSelectedTag(null)} className="cursor-pointer inline-flex items-center gap-1">
+                <span>#{selectedTag}</span>
+                <AppIcon name="x" size={11} />
               </Badge>
             </div>
           )}
@@ -764,8 +765,9 @@ export const Newsfeed: React.FC = () => {
                 Phân hóa sức khỏe & độ ổn định 2026
               </p>
             </div>
-            <Link to="/dashboard" className="text-brand-secondary hover:underline text-[11px] font-semibold">
-              Dashboard →
+            <Link to="/dashboard" className="inline-flex items-center gap-1 text-brand-secondary hover:underline text-[11px] font-semibold">
+              <span>Dashboard</span>
+              <AppIcon name="arrowRight" size={11} />
             </Link>
           </div>
 
@@ -804,14 +806,15 @@ export const Newsfeed: React.FC = () => {
           </div>
 
           <div className="pt-2 border-t border-surface-border flex items-center justify-between text-[11px] text-text-subtle font-mono">
-            <span>● A+ trên 90</span>
-            <span>● A từ 85 đến 89</span>
-            <span>● B+ từ 80 đến 84</span>
+            <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-brand-primary inline-block" /> A+ trên 90</span>
+            <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" /> A từ 85 đến 89</span>
+            <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" /> B+ từ 80 đến 84</span>
           </div>
 
           <Link to="/dashboard" className="w-full">
-            <Button variant="secondary" size="sm" className="w-full justify-center">
-              Xem phân hóa chi tiết →
+            <Button variant="secondary" size="sm" className="w-full justify-center inline-flex items-center gap-1.5">
+              <span>Xem phân hóa chi tiết</span>
+              <AppIcon name="arrowRight" size={12} />
             </Button>
           </Link>
         </Card>

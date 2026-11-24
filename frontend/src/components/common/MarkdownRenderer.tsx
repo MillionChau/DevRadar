@@ -523,7 +523,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           },
           TIP: {
             bg: 'bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-300',
-            icon: 'sparkles',
+            icon: 'zap',
             label: 'MẸO / GỢI Ý (TIP)',
           },
           IMPORTANT: {

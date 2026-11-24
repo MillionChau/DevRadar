@@ -547,8 +547,8 @@ export const PostDetail: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-3 text-xs text-text-muted">
-                <span className="flex items-center gap-1">
-                  <span>⏱️</span>
+                <span className="flex items-center gap-1.5">
+                  <AppIcon name="clock" size={12} className="text-text-subtle" />
                   <span>~{readingTime} phút đọc</span>
                 </span>
                 <span>•</span>

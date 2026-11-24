@@ -172,20 +172,22 @@ export const MarkdownEditorToolbar: React.FC<MarkdownEditorToolbarProps> = ({
         <button
           type="button"
           onClick={() => onInsert('[', '](https://example.com)', 'Tiêu đề liên kết')}
-          className="p-1.5 rounded hover:bg-surface-elevated hover:text-text-main text-xs transition-colors"
+          className="px-1.5 py-1 rounded hover:bg-surface-elevated hover:text-text-main text-xs transition-colors inline-flex items-center gap-1"
           title="Chèn liên kết"
         >
-          🔗 Link
+          <AppIcon name="link" size={12} />
+          <span>Link</span>
         </button>
 
         {/* Table */}
         <button
           type="button"
           onClick={() => onInsert('\n| Tiêu chí | Điểm số | Ghi chú |\n|---|---|---|\n| Hiệu năng | 9.5/10 | Tối ưu bộ nhớ |\n| Bảo mật | 9.0/10 | Mã hóa JWT |\n\n')}
-          className="p-1.5 rounded hover:bg-surface-elevated hover:text-text-main text-xs transition-colors"
+          className="px-1.5 py-1 rounded hover:bg-surface-elevated hover:text-text-main text-xs transition-colors inline-flex items-center gap-1"
           title="Chèn bảng Markdown"
         >
-          📊 Bảng
+          <AppIcon name="table" size={12} />
+          <span>Bảng</span>
         </button>
 
         {/* GitHub Alert Note */}

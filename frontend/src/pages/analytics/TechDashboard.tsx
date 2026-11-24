@@ -90,11 +90,28 @@ export const TechDashboard: React.FC = () => {
   const [topRepos, setTopRepos] = useState<any[]>([]);
   const [isLoadingTopRepos, setIsLoadingTopRepos] = useState<boolean>(true);
 
+  // Danh mục Ngôn ngữ & Framework thực tế tải động từ MongoDB Atlas
+  const [technologies, setTechnologies] = useState<TechItem[]>(CRAWLER_TECHNOLOGIES);
+
   // States cho Bộ chọn Select & Tìm kiếm nâng cao
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterType, setFilterType] = useState<'all' | 'Language' | 'Framework'>('all');
   const [isPickerOpen, setIsPickerOpen] = useState<boolean>(false);
   const pickerDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Tải danh mục công nghệ thực tế từ database
+  useEffect(() => {
+    analyticsApi
+      .getTechCatalog()
+      .then((res) => {
+        if (res?.items && Array.isArray(res.items) && res.items.length > 0) {
+          setTechnologies(res.items);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not load dynamic tech catalog from database:', err);
+      });
+  }, []);
 
   // States cho Phân hệ Dự báo Chuỗi thời gian (ARIMA Forecasting Engine)
   const [forecastTech, setForecastTech] = useState<string>('Python');
@@ -190,11 +207,11 @@ export const TechDashboard: React.FC = () => {
       });
   }, [timeRange, selectedLangs]);
 
-  const languagesList = useMemo(() => CRAWLER_TECHNOLOGIES.filter((t) => t.type === 'Language'), []);
-  const frameworksList = useMemo(() => CRAWLER_TECHNOLOGIES.filter((t) => t.type === 'Framework'), []);
+  const languagesList = useMemo(() => technologies.filter((t) => t.type === 'Language'), [technologies]);
+  const frameworksList = useMemo(() => technologies.filter((t) => t.type === 'Framework'), [technologies]);
 
   const filteredTechnologies = useMemo(() => {
-    return CRAWLER_TECHNOLOGIES.filter((tech) => {
+    return technologies.filter((tech) => {
       const matchesType = filterType === 'all' || tech.type === filterType;
       const matchesQuery =
         !searchQuery.trim() ||
@@ -203,7 +220,7 @@ export const TechDashboard: React.FC = () => {
         tech.tag.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesType && matchesQuery;
     });
-  }, [filterType, searchQuery]);
+  }, [technologies, filterType, searchQuery]);
 
   // Click-outside listener cho dropdown tìm kiếm nâng cao
   useEffect(() => {
@@ -272,7 +289,7 @@ export const TechDashboard: React.FC = () => {
   // Language & Framework Health Data - lấy 4 công nghệ tiêu biểu từ seriesList
   const healthData: HealthScoreData[] = useMemo(() => {
     return seriesList.slice(0, 4).map((s: any) => {
-      const techInfo = CRAWLER_TECHNOLOGIES.find((t) => t.name.toLowerCase() === s.name.toLowerCase());
+      const techInfo = technologies.find((t) => t.name.toLowerCase() === s.name.toLowerCase());
       const cat = techInfo?.category || `${s.name} Ecosystem`;
       const scoreVal = Math.round(s.current_score ?? 85);
       const tierVal: 'A+' | 'A' | 'B+' | 'B' = scoreVal >= 88 ? 'A+' : scoreVal >= 80 ? 'A' : scoreVal >= 70 ? 'B+' : 'B';
@@ -282,7 +299,7 @@ export const TechDashboard: React.FC = () => {
         category: cat,
         score: scoreVal,
         tier: tierVal,
-        popularity: `${scoreVal > 85 ? '1.8M' : '650k'} ★`,
+        popularity: `${scoreVal > 85 ? '1.8M' : '650k'} stars`,
         trendDelta: s.growth || '+1.0%',
         direction: dir,
         prevScore: s.points?.[0] || scoreVal,
@@ -597,7 +614,7 @@ export const TechDashboard: React.FC = () => {
                 <div className="text-right">
                   <span className="text-[11px] text-text-subtle block">Popularity Trend</span>
                   <span
-                    className={`text-xs font-mono font-bold flex items-center justify-end gap-0.5 ${
+                    className={`text-xs font-mono font-bold flex items-center justify-end gap-1 ${
                       tech.direction === 'up'
                         ? 'text-status-success'
                         : tech.direction === 'down'
@@ -605,7 +622,10 @@ export const TechDashboard: React.FC = () => {
                         : 'text-brand-secondary'
                     }`}
                   >
-                    {tech.direction === 'up' ? '↗ ' : tech.direction === 'down' ? '↘ ' : '→ '}
+                    <AppIcon
+                      name={tech.direction === 'up' ? 'trendingUp' : tech.direction === 'down' ? 'trendingDown' : 'minus'}
+                      size={12}
+                    />
                     {tech.trendDelta}
                   </span>
                 </div>
@@ -638,7 +658,7 @@ export const TechDashboard: React.FC = () => {
                 </span>
               </div>
               <p className="text-[11px] text-text-subtle">
-                Sử dụng thẻ select bên dưới để chọn nhanh trong {CRAWLER_TECHNOLOGIES.length} ngôn ngữ &amp; framework từ CrawlerGithubService.
+                Sử dụng thẻ select bên dưới để chọn nhanh trong {technologies.length} ngôn ngữ &amp; framework thực tế từ database.
               </p>
             </div>
           </div>
@@ -694,10 +714,10 @@ export const TechDashboard: React.FC = () => {
               >
                 <option value="" disabled>
                   {selectedLangs.length >= MAX_SELECTION
-                    ? '⚠️ Đã đạt tối đa 10/10 công nghệ (Chọn để bỏ bớt)'
-                    : '➕ Bấm vào đây để chọn Ngôn ngữ / Framework thêm vào biểu đồ...'}
+                    ? 'Đã đạt tối đa 10/10 công nghệ (Chọn để bỏ bớt)'
+                    : 'Bấm vào đây để chọn Ngôn ngữ / Framework thêm vào biểu đồ...'}
                 </option>
-                <optgroup label="── 🌐 Ngôn ngữ lập trình ──">
+                <optgroup label="Ngôn ngữ lập trình">
                   {languagesList.map((lang) => {
                     const isSelected = selectedLangs.includes(lang.name);
                     return (
@@ -706,12 +726,12 @@ export const TechDashboard: React.FC = () => {
                         value={lang.name}
                         disabled={selectedLangs.length >= MAX_SELECTION && !isSelected}
                       >
-                        {isSelected ? '✓ ' : '+ '} {lang.name} — {lang.category} ({lang.tag})
+                        {isSelected ? '[x] ' : ''}{lang.name} — {lang.category} ({lang.tag})
                       </option>
                     );
                   })}
                 </optgroup>
-                <optgroup label="── ⚡ Frameworks & Nền tảng ──">
+                <optgroup label="Frameworks & Nền tảng">
                   {frameworksList.map((fw) => {
                     const isSelected = selectedLangs.includes(fw.name);
                     return (
@@ -720,7 +740,7 @@ export const TechDashboard: React.FC = () => {
                         value={fw.name}
                         disabled={selectedLangs.length >= MAX_SELECTION && !isSelected}
                       >
-                        {isSelected ? '✓ ' : '+ '} {fw.name} — {fw.category} ({fw.tag})
+                        {isSelected ? '[x] ' : ''}{fw.name} — {fw.category} ({fw.tag})
                       </option>
                     );
                   })}
@@ -763,7 +783,7 @@ export const TechDashboard: React.FC = () => {
             Đang hiển thị trên biểu đồ ({selectedLangs.length}/10):
           </span>
           {selectedLangs.map((name) => {
-            const techInfo = CRAWLER_TECHNOLOGIES.find((t) => t.name.toLowerCase() === name.toLowerCase());
+            const techInfo = technologies.find((t) => t.name.toLowerCase() === name.toLowerCase());
             const color = techInfo?.color || '#3B82F6';
             const isFw = techInfo?.type === 'Framework';
 
@@ -790,7 +810,7 @@ export const TechDashboard: React.FC = () => {
                   title={`Gỡ bỏ ${name} khỏi biểu đồ`}
                   className="w-4 h-4 rounded-full flex items-center justify-center text-text-subtle hover:text-status-danger hover:bg-surface-border transition-colors text-xs ml-0.5"
                 >
-                  ✕
+                  <AppIcon name="x" size={11} />
                 </button>
               </span>
             );
@@ -843,7 +863,7 @@ export const TechDashboard: React.FC = () => {
                     }`}
                   >
                     {t === 'all'
-                      ? `Tất cả (${CRAWLER_TECHNOLOGIES.length})`
+                      ? `Tất cả (${technologies.length})`
                       : t === 'Language'
                       ? `Ngôn ngữ (${languagesList.length})`
                       : `Frameworks (${frameworksList.length})`}
@@ -889,7 +909,7 @@ export const TechDashboard: React.FC = () => {
                           : 'bg-surface-elevated text-text-subtle'
                       }`}
                     >
-                      {isSelected ? '✓' : '+'}
+                      <AppIcon name={isSelected ? 'check' : 'plus'} size={10} />
                     </span>
                   </button>
                 );
@@ -1287,7 +1307,7 @@ export const TechDashboard: React.FC = () => {
                 onChange={(e) => setForecastTech(e.target.value)}
                 className="bg-surface-card border border-surface-border text-text-main text-xs rounded-btn pl-3 pr-8 py-1.5 font-semibold focus:outline-none focus:border-brand-primary cursor-pointer hover:border-brand-primary/50 transition-colors shadow-xs"
               >
-                {CRAWLER_TECHNOLOGIES.map((tech) => (
+                {technologies.map((tech) => (
                   <option key={tech.name} value={tech.name} className="bg-surface-card text-text-main dark:bg-slate-900 dark:text-white">
                     {tech.name} ({tech.type === 'Language' ? 'Ngôn ngữ' : 'Framework'})
                   </option>
@@ -1362,7 +1382,7 @@ export const TechDashboard: React.FC = () => {
                 className="w-2 h-2 rounded-full shrink-0"
                 style={{
                   backgroundColor:
-                    CRAWLER_TECHNOLOGIES.find((t) => t.name.toLowerCase() === quickTech.toLowerCase())?.color || '#3B82F6',
+                    technologies.find((t) => t.name.toLowerCase() === quickTech.toLowerCase())?.color || '#3B82F6',
                 }}
               />
               {quickTech}
@@ -1655,8 +1675,8 @@ export const TechDashboard: React.FC = () => {
           {/* Right Diagnostics & Strategic Advisory Panel (Col-span 4) */}
           <div className="lg:col-span-4 flex flex-col gap-3">
             <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5 pb-2 border-b border-surface-border">
-              <AppIcon name="zap" size={14} className="text-brand-secondary" />
-              Chỉ Số Phân Tích &amp; Khuyến Nghị AI Core
+              <AppIcon name="barChart2" size={14} className="text-brand-secondary" />
+              Chỉ Số Phân Tích &amp; Khuyến Nghị Core Models
             </h3>
 
             {/* 4 KPI Cards in 2x2 Grid */}
@@ -1729,7 +1749,7 @@ export const TechDashboard: React.FC = () => {
               <div className="pt-2 border-t border-brand-primary/20 flex items-center justify-between text-[11px] text-text-subtle">
                 <span>Nguồn: Crawler ML Engine</span>
                 <Link to="/analytics/reports" className="text-brand-secondary hover:underline font-semibold flex items-center gap-1">
-                  Đọc Whitepaper →
+                  Đọc Whitepaper <AppIcon name="arrowRight" size={12} />
                 </Link>
               </div>
             </div>
@@ -1742,8 +1762,8 @@ export const TechDashboard: React.FC = () => {
       <Card variant="default" padding="none" className="overflow-hidden">
         <div className="p-4 bg-surface-elevated/40 border-b border-surface-border font-bold text-xs text-text-muted uppercase tracking-wider flex items-center justify-between">
           <span>DANH SÁCH REPOSITORY NỔI BẬT THEO DÕI</span>
-          <Link to="/analytics/repo-health" className="text-brand-secondary hover:underline normal-case text-xs">
-            Xem tất cả →
+          <Link to="/analytics/repo-health" className="text-brand-secondary hover:underline normal-case text-xs flex items-center gap-1">
+            Xem tất cả <AppIcon name="arrowRight" size={12} />
           </Link>
         </div>
         <div className="overflow-x-auto">
@@ -1782,8 +1802,18 @@ export const TechDashboard: React.FC = () => {
                     <td className="py-3.5 px-4 font-mono font-bold text-text-main">
                       {r.name}
                     </td>
-                    <td className="py-3.5 px-4 text-text-muted">★ {r.stars}</td>
-                    <td className="py-3.5 px-4 text-text-muted">⑂ {r.forks}</td>
+                    <td className="py-3.5 px-4 text-text-muted">
+                      <span className="flex items-center gap-1">
+                        <AppIcon name="star" size={12} className="text-amber-400" />
+                        {r.stars}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-text-muted">
+                      <span className="flex items-center gap-1">
+                        <AppIcon name="gitFork" size={12} />
+                        {r.forks}
+                      </span>
+                    </td>
                     <td className="py-3.5 px-4 font-mono font-bold text-brand-secondary">
                       {r.health}
                     </td>

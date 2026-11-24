@@ -114,7 +114,7 @@ export const Header: React.FC = () => {
       case 'mention':
         return <AppIcon name="atSign" size={14} className="text-brand-primary" />;
       case 'system':
-        return <AppIcon name="sparkles" size={14} className="text-status-warning" />;
+        return <AppIcon name="info" size={14} className="text-status-warning" />;
       case 'report_resolved':
       case 'ModerationAlert':
         return <AppIcon name="shieldCheck" size={14} className="text-status-success" />;
@@ -169,7 +169,7 @@ export const Header: React.FC = () => {
             className="w-full bg-surface-elevated border border-surface-border text-text-main text-xs rounded-btn pl-9 pr-12 py-2 h-9 placeholder:text-text-subtle focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
           />
           <div className="absolute right-2 px-1.5 py-0.5 rounded bg-surface-border text-[10px] font-mono font-bold text-text-muted">
-            ⌘ K
+            Ctrl K
           </div>
         </form>
       </div>
@@ -341,9 +341,10 @@ export const Header: React.FC = () => {
                     <Link
                       to="/notifications"
                       onClick={() => setShowNotificationMenu(false)}
-                      className="block w-full py-1.5 text-xs font-semibold text-brand-secondary hover:text-brand-light transition-colors"
+                      className="inline-flex items-center justify-center gap-1 w-full py-1.5 text-xs font-semibold text-brand-secondary hover:text-brand-light transition-colors"
                     >
-                      Xem tất cả trong Thông báo →
+                      <span>Xem tất cả trong Thông báo</span>
+                      <AppIcon name="arrowRight" size={12} />
                     </Link>
                   </div>
                 </div>
@@ -387,8 +388,9 @@ export const Header: React.FC = () => {
                     <p className="text-xs font-bold text-text-main truncate">{user.displayName || user.userName}</p>
                     <p className="text-[11px] text-text-muted truncate">{user.email}</p>
                     <div className="mt-1.5">
-                      <Badge variant={role === 'Admin' ? 'role' : 'reputation'} size="sm">
-                        {role === 'Admin' ? '🛡️ Quản trị viên' : role === 'Moderator' ? '⚖️ Điều phối viên' : '👤 Thành viên'}
+                      <Badge variant={role === 'Admin' ? 'role' : 'reputation'} size="sm" className="inline-flex items-center gap-1">
+                        <AppIcon name={role === 'Admin' ? 'shield' : role === 'Moderator' ? 'award' : 'user'} size={11} />
+                        <span>{role === 'Admin' ? 'Quản trị viên' : role === 'Moderator' ? 'Điều phối viên' : 'Thành viên'}</span>
                       </Badge>
                     </div>
                   </div>

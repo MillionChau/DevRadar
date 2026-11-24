@@ -178,13 +178,14 @@ export const MyProfile: React.FC = () => {
                   </Badge>
                 )}
                 {reputation && (
-                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded border shadow-sm ${
+                  <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded border shadow-sm ${
                     reputation.trustSafetyScore >= 80 ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' :
                     reputation.trustSafetyScore >= 60 ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border-yellow-500/30' :
                     reputation.trustSafetyScore >= 40 ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30' :
                     'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30'
                   }`}>
-                    🛡️ TSS {reputation.trustSafetyScore}/100
+                    <AppIcon name="shield" size={11} />
+                    <span>TSS {reputation.trustSafetyScore}/100</span>
                   </span>
                 )}
               </div>
@@ -374,8 +375,9 @@ export const MyProfile: React.FC = () => {
                   style={{ width: `${reputation?.trustSafetyScore ?? 100}%` }}
                 />
               </div>
-              <p className="text-[11px] text-text-muted leading-relaxed">
-                🛡️ Tự động phục hồi <strong className="text-emerald-400">+5 TSS/tuần</strong> khi duy trì hoạt động trong sạch không vi phạm.
+              <p className="text-[11px] text-text-muted leading-relaxed inline-flex items-center gap-1.5">
+                <AppIcon name="shield" size={13} className="text-emerald-400 shrink-0" />
+                <span>Tự động phục hồi <strong className="text-emerald-400">+5 TSS/tuần</strong> khi duy trì hoạt động trong sạch không vi phạm.</span>
               </p>
             </Card>
 
@@ -399,8 +401,9 @@ export const MyProfile: React.FC = () => {
                   </span>
                 </div>
               </div>
-              <p className="text-[11px] text-text-muted leading-relaxed">
-                ❄️ Cơ chế Ngủ đông: Giảm 15%/tuần trên điểm đóng góp nếu tài khoản không hoạt động trên 14 ngày.
+              <p className="text-[11px] text-text-muted leading-relaxed inline-flex items-center gap-1.5">
+                <AppIcon name="clock" size={13} className="text-sky-400 shrink-0" />
+                <span>Cơ chế Ngủ đông: Giảm 15%/tuần trên điểm đóng góp nếu tài khoản không hoạt động trên 14 ngày.</span>
               </p>
             </Card>
           </div>
@@ -414,7 +417,7 @@ export const MyProfile: React.FC = () => {
               {[
                 { level: 1, title: 'Newbie', badge: 'Tân thủ', icon: 'Sprout', range: '0 - 99 điểm', priv: 'Đăng bài cơ bản, bình luận' },
                 { level: 2, title: 'Junior', badge: 'Lập trình viên', icon: 'Code2', range: '100 - 399 điểm', priv: 'Tạo Bookmark Folder, đính kèm code' },
-                { level: 3, title: 'Senior', badge: 'Senior', icon: 'Sparkles', range: '400 - 999 điểm', priv: 'Bỏ qua kiểm duyệt AI, gắn tag' },
+                { level: 3, title: 'Senior', badge: 'Senior', icon: 'Award', range: '400 - 999 điểm', priv: 'Bỏ qua kiểm duyệt AI, gắn tag' },
                 { level: 4, title: 'Master', badge: 'Chuyên gia', icon: 'Star', range: '1,000 - 2,499 điểm', priv: 'Đề xuất Best Solution, ghim bài' },
                 { level: 5, title: 'Legend', badge: 'Huyền thoại', icon: 'Crown', range: '2,500+ điểm', priv: 'Hội đồng Quản trị nội dung, đặc quyền tối cao' },
               ].map((tier) => {
@@ -548,7 +551,7 @@ export const MyProfile: React.FC = () => {
                   </div>
                   {theme === 'light' && (
                     <span className="w-5 h-5 rounded-full bg-brand-primary text-white flex items-center justify-center text-xs">
-                      ✓
+                      <AppIcon name="check" size={12} />
                     </span>
                   )}
                 </div>
@@ -584,7 +587,7 @@ export const MyProfile: React.FC = () => {
                   </div>
                   {theme === 'dark' && (
                     <span className="w-5 h-5 rounded-full bg-brand-primary text-white flex items-center justify-center text-xs">
-                      ✓
+                      <AppIcon name="check" size={12} />
                     </span>
                   )}
                 </div>
@@ -620,7 +623,7 @@ export const MyProfile: React.FC = () => {
                   </div>
                   {theme === 'system' && (
                     <span className="w-5 h-5 rounded-full bg-brand-primary text-white flex items-center justify-center text-xs">
-                      ✓
+                      <AppIcon name="check" size={12} />
                     </span>
                   )}
                 </div>
@@ -648,8 +651,9 @@ export const MyProfile: React.FC = () => {
               <div className="flex items-center justify-between">
                 <span className="text-xs text-text-muted">
                   Chế độ đang kích hoạt thực tế:{' '}
-                  <strong className="text-text-main font-semibold">
-                    {isDark ? '🌙 Chế độ Tối (Dark Mode)' : '☀️ Chế độ Sáng (Light Mode)'}
+                  <strong className="text-text-main font-semibold inline-flex items-center gap-1">
+                    <AppIcon name={isDark ? "Moon" : "Sun"} size={13} className={isDark ? "text-sky-400" : "text-amber-500"} />
+                    <span>{isDark ? 'Chế độ Tối (Dark Mode)' : 'Chế độ Sáng (Light Mode)'}</span>
                   </strong>
                 </span>
                 <Badge variant="tech" size="sm">

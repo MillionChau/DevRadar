@@ -6,6 +6,7 @@ import Badge from '../../components/common/Badge';
 import Input from '../../components/common/Input';
 import { AppIcon } from '../../components/common/Icon';
 import RadarChart, { RadarAxis } from '../../components/common/RadarChart';
+import { Pagination } from '../../components/common/Pagination';
 import { RepoHealth as RepoHealthType } from '../../types';
 import { analyticsApi } from '../../api';
 
@@ -49,6 +50,116 @@ export const RepoHealth: React.FC = () => {
   const [weeklyHealthScores, setWeeklyHealthScores] = useState<number[]>([]);
   const [weeklyActivityScores, setWeeklyActivityScores] = useState<number[]>([]);
   const [hoveredWeek, setHoveredWeek] = useState<{ week: number; health: number; activity: number; x: number; y: number } | null>(null);
+
+  // Database Repositories Table & Filter state (Admin Core Pattern)
+  const [tableRepos, setTableRepos] = useState<Array<{
+    id: string;
+    full_name: string;
+    name: string;
+    owner: string;
+    primary_language: string;
+    stars: number;
+    forks: number;
+    open_issues: number;
+    health_score: number;
+    health_level: string;
+    grade: string;
+    description: string;
+    last_synced_at: string;
+  }>>([]);
+  const [isTableLoading, setIsTableLoading] = useState(false);
+  const [tablePage, setTablePage] = useState(1);
+  const [tablePageSize, setTablePageSize] = useState(10);
+  const [tableTotalCount, setTableTotalCount] = useState(0);
+  const [tableTotalPages, setTableTotalPages] = useState(1);
+  const [availableLanguages, setAvailableLanguages] = useState<string[]>([
+    'Python', 'TypeScript', 'JavaScript', 'Go', 'Rust', 'C++', 'Java', 'C#',
+    'PHP', 'Swift', 'Kotlin', 'Shell', 'Ruby', 'HTML', 'Dart', 'Markdown'
+  ]);
+
+  // Filters state
+  const [searchFilter, setSearchFilter] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [languageFilter, setLanguageFilter] = useState('All');
+  const [starsFilter, setStarsFilter] = useState('All');
+  const [scoreFilter, setScoreFilter] = useState('All');
+  const [sortBy, setSortBy] = useState('stars');
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+
+  // Debounce search input
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchFilter);
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [searchFilter]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setTablePage(1);
+  }, [debouncedSearch, languageFilter, starsFilter, scoreFilter, sortBy, sortOrder]);
+
+  // Fetch paginated repositories from MongoDB
+  const fetchTableRepos = async () => {
+    setIsTableLoading(true);
+    try {
+      let min_stars: number | undefined;
+      let max_stars: number | undefined;
+      if (starsFilter === '100k') min_stars = 100000;
+      else if (starsFilter === '50k') min_stars = 50000;
+      else if (starsFilter === '10k') min_stars = 10000;
+      else if (starsFilter === '1k') min_stars = 1000;
+      else if (starsFilter === '100') min_stars = 100;
+
+      let min_score: number | undefined;
+      let max_score: number | undefined;
+      if (scoreFilter === '85') min_score = 85;
+      else if (scoreFilter === '75') { min_score = 75; max_score = 84.99; }
+      else if (scoreFilter === '60') { min_score = 60; max_score = 74.99; }
+      else if (scoreFilter === 'under60') { max_score = 59.99; }
+
+      const res = await analyticsApi.getRepositories({
+        page: tablePage,
+        page_size: tablePageSize,
+        search: debouncedSearch.trim() || undefined,
+        language: languageFilter !== 'All' ? languageFilter : undefined,
+        min_stars,
+        max_stars,
+        min_score,
+        max_score,
+        sort_by: sortBy,
+        sort_order: sortOrder,
+      });
+
+      if (res) {
+        setTableRepos(res.items || []);
+        setTableTotalCount(res.total || 0);
+        setTableTotalPages(res.total_pages || 1);
+        if (res.languages && res.languages.length > 0) {
+          setAvailableLanguages(res.languages);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch repositories from MongoDB:', err);
+    } finally {
+      setIsTableLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTableRepos();
+  }, [tablePage, tablePageSize, debouncedSearch, languageFilter, starsFilter, scoreFilter, sortBy, sortOrder]);
+
+  const handleResetFilters = () => {
+    setSearchFilter('');
+    setDebouncedSearch('');
+    setLanguageFilter('All');
+    setStarsFilter('All');
+    setScoreFilter('All');
+    setSortBy('stars');
+    setSortOrder('desc');
+    setTablePage(1);
+  };
 
   const fetchRepo = async (query: string) => {
     if (!query.trim()) return;
@@ -186,35 +297,299 @@ export const RepoHealth: React.FC = () => {
         </form>
       </div>
 
-      {/* Quick Select Popular Repositories Bar */}
-      <div className="flex flex-wrap items-center gap-1.5 p-2.5 rounded-lg bg-surface-elevated/40 border border-surface-border text-xs">
-        <span className="text-[11px] text-text-muted font-medium flex items-center gap-1 shrink-0">
-          <AppIcon name="star" size={13} className="text-amber-400" />
-          Kho mã gợi ý:
-        </span>
-        {(suggestedRepos.length > 0 ? suggestedRepos : POPULAR_REPOS).slice(0, 6).map((r: any) => {
-          const fullName = r.full_name || r.name;
-          const isCurrent = repoDetails?.full_name?.toLowerCase() === fullName.toLowerCase();
-          return (
-            <button
-              key={fullName}
-              type="button"
-              onClick={() => handleSelectRepo(fullName)}
-              className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all border ${
-                isCurrent
-                  ? 'bg-brand-primary text-white border-brand-primary font-bold shadow-xs'
-                  : 'bg-surface-card border-surface-border text-text-muted hover:text-text-main hover:border-brand-primary/50'
-              }`}
+      {/* Repository Database Explorer & Filters (Admin Core Table Pattern) */}
+      <div className="flex flex-col gap-3">
+        {/* Section title & count info */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <AppIcon name="Database" size={18} className="text-brand-primary" />
+            <h2 className="text-sm font-bold text-text-main uppercase tracking-wide">
+              Danh sách Kho mã nguồn (Database)
+            </h2>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary font-mono font-medium">
+              {tableTotalCount > 0 ? `${tableTotalCount.toLocaleString()} kho mã` : 'Đang tải...'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-text-muted hidden sm:inline">
+              Chọn kho mã từ cơ sở dữ liệu để xem phân tích Radar &amp; chỉ số chuyên sâu
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon="RefreshCw"
+              onClick={fetchTableRepos}
+              isLoading={isTableLoading}
+              title="Tải lại danh sách từ cơ sở dữ liệu"
             >
-              <span>{fullName}</span>
-              {r.language && (
-                <span className={`ml-1.5 text-[10px] ${isCurrent ? 'text-white/80' : 'text-text-subtle'}`}>
-                  • {r.language}
-                </span>
-              )}
-            </button>
-          );
-        })}
+              Làm mới
+            </Button>
+          </div>
+        </div>
+
+        {/* Filter Toolbar (Admin Style) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5 p-3 rounded-lg bg-surface-elevated/40 border border-surface-border">
+          {/* Keyword search */}
+          <div className="lg:col-span-2">
+            <Input
+              placeholder="Tìm theo tên repo hoặc tác giả..."
+              icon="search"
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+            />
+          </div>
+
+          {/* Ngôn ngữ filter */}
+          <div>
+            <select
+              value={languageFilter}
+              onChange={(e) => setLanguageFilter(e.target.value)}
+              className="w-full h-10 bg-surface-elevated border border-surface-border rounded-lg px-3 py-2 text-xs text-text-main focus:outline-none focus:border-brand-primary transition-colors"
+            >
+              <option value="All">Tất cả ngôn ngữ</option>
+              {availableLanguages.map((lang) => (
+                <option key={lang} value={lang}>
+                  {lang}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Số sao filter */}
+          <div>
+            <select
+              value={starsFilter}
+              onChange={(e) => setStarsFilter(e.target.value)}
+              className="w-full h-10 bg-surface-elevated border border-surface-border rounded-lg px-3 py-2 text-xs text-text-main focus:outline-none focus:border-brand-primary transition-colors"
+            >
+              <option value="All">Tất cả số sao</option>
+              <option value="100k">Từ 100,000 sao trở lên (Siêu phổ biến)</option>
+              <option value="50k">Từ 50,000 sao trở lên (Rất lớn)</option>
+              <option value="10k">Từ 10,000 sao trở lên (Lớn)</option>
+              <option value="1k">Từ 1,000 sao trở lên (Tiêu chuẩn)</option>
+              <option value="100">Từ 100 sao trở lên (Cộng đồng)</option>
+            </select>
+          </div>
+
+          {/* Điểm repo filter */}
+          <div>
+            <select
+              value={scoreFilter}
+              onChange={(e) => setScoreFilter(e.target.value)}
+              className="w-full h-10 bg-surface-elevated border border-surface-border rounded-lg px-3 py-2 text-xs text-text-main focus:outline-none focus:border-brand-primary transition-colors"
+            >
+              <option value="All">Tất cả điểm repo</option>
+              <option value="85">Hạng A+ (Từ 85 điểm trở lên)</option>
+              <option value="75">Hạng A (75 - 84 điểm)</option>
+              <option value="60">Hạng B (60 - 74 điểm)</option>
+              <option value="under60">Dưới 60 điểm</option>
+            </select>
+          </div>
+
+          {/* Sắp xếp & Đặt lại */}
+          <div className="flex items-center gap-1.5">
+            <select
+              value={`${sortBy}_${sortOrder}`}
+              onChange={(e) => {
+                const [f, o] = e.target.value.split('_');
+                setSortBy(f);
+                setSortOrder(o as any);
+              }}
+              className="w-full h-10 bg-surface-elevated border border-surface-border rounded-lg px-2.5 py-2 text-xs text-text-main focus:outline-none focus:border-brand-primary transition-colors"
+            >
+              <option value="stars_desc">Sao nhiều nhất</option>
+              <option value="health_score_desc">Điểm cao nhất</option>
+              <option value="forks_desc">Forks nhiều nhất</option>
+              <option value="stars_asc">Sao ít nhất</option>
+              <option value="health_score_asc">Điểm thấp nhất</option>
+            </select>
+
+            {(searchFilter || languageFilter !== 'All' || starsFilter !== 'All' || scoreFilter !== 'All' || sortBy !== 'stars' || sortOrder !== 'desc') && (
+              <Button
+                variant="outline"
+                size="sm"
+                icon="X"
+                onClick={handleResetFilters}
+                title="Xóa tất cả bộ lọc"
+                className="shrink-0"
+              >
+                Xóa lọc
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Repositories Table (Admin Core Table Structure) */}
+        <Card variant="surface" padding="none" className="overflow-hidden border border-surface-border shadow-sm">
+          <div className="overflow-x-auto max-h-[460px] overflow-y-auto">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="sticky top-0 z-20 bg-surface-elevated border-b border-surface-border text-text-muted text-xs uppercase font-semibold shadow-sm">
+                <tr>
+                  <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border">Kho mã nguồn</th>
+                  <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border">Ngôn ngữ</th>
+                  <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border">Sao &amp; Forks</th>
+                  <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border">Điểm sức khỏe</th>
+                  <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border">Xếp hạng</th>
+                  <th className="py-3 px-4 bg-surface-elevated sticky top-0 border-b border-surface-border text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-border/60">
+                {isTableLoading ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-text-muted">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-6 h-6 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+                        <span className="text-xs">Đang tải danh sách kho mã từ cơ sở dữ liệu MongoDB Atlas...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : tableRepos.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-text-muted">
+                      <div className="flex flex-col items-center gap-2">
+                        <AppIcon name="Github" size={32} className="text-text-subtle" />
+                        <span className="text-sm font-medium text-text-main">Không tìm thấy kho mã phù hợp</span>
+                        <span className="text-xs text-text-subtle">Thử điều chỉnh lại bộ lọc ngôn ngữ, số sao hoặc điểm số.</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  tableRepos.map((repo) => {
+                    const isCurrent = repoDetails?.full_name?.toLowerCase() === repo.full_name.toLowerCase();
+                    const healthLevelLabel =
+                      repo.health_level === 'HEALTHY'
+                        ? 'Hoạt động tốt'
+                        : repo.health_level === 'MODERATE'
+                        ? 'Đạt chuẩn'
+                        : repo.health_level === 'AT_RISK'
+                        ? 'Cần theo dõi'
+                        : 'Rủi ro';
+
+                    const gradeBadgeClass =
+                      repo.grade === 'A+'
+                        ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30'
+                        : repo.grade === 'A'
+                        ? 'bg-blue-500/15 text-blue-500 border-blue-500/30'
+                        : repo.grade === 'B' || repo.grade === 'B+'
+                        ? 'bg-amber-500/15 text-amber-500 border-amber-500/30'
+                        : 'bg-rose-500/15 text-rose-500 border-rose-500/30';
+
+                    return (
+                      <tr
+                        key={repo.id || repo.full_name}
+                        onClick={() => handleSelectRepo(repo.full_name)}
+                        className={`transition-colors cursor-pointer ${
+                          isCurrent
+                            ? 'bg-brand-primary/10 hover:bg-brand-primary/15 border-l-4 border-l-brand-primary'
+                            : 'hover:bg-surface-elevated/40'
+                        }`}
+                      >
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2.5">
+                            <AppIcon name="Github" size={18} className="text-text-muted shrink-0" />
+                            <div className="min-w-0 max-w-xs md:max-w-md">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-semibold text-text-main text-xs truncate">
+                                  {repo.full_name}
+                                </span>
+                                {isCurrent && (
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-brand-primary text-white shrink-0">
+                                    Đang xem
+                                  </span>
+                                )}
+                              </div>
+                              {repo.description && (
+                                <p className="text-[11px] text-text-muted truncate mt-0.5" title={repo.description}>
+                                  {repo.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <Badge variant="tech" size="sm">
+                            {repo.primary_language || 'Other'}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex flex-col">
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-text-main font-mono">
+                              <AppIcon name="star" size={13} className="text-amber-400" />
+                              {repo.stars.toLocaleString()}
+                            </span>
+                            <span className="text-[10px] text-text-muted font-mono">
+                              {repo.forks.toLocaleString()} forks
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex flex-col gap-1 w-24">
+                            <div className="flex items-baseline gap-1 font-mono">
+                              <span className="text-sm font-bold text-text-main">{repo.health_score}</span>
+                              <span className="text-[10px] text-text-muted">/100</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-surface-border rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${
+                                  repo.health_score >= 85
+                                    ? 'bg-emerald-500'
+                                    : repo.health_score >= 75
+                                    ? 'bg-blue-500'
+                                    : repo.health_score >= 60
+                                    ? 'bg-amber-500'
+                                    : 'bg-rose-500'
+                                }`}
+                                style={{ width: `${Math.min(100, Math.max(0, repo.health_score))}%` }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-[11px] font-bold font-mono px-2 py-0.5 rounded border ${gradeBadgeClass}`}>
+                              {repo.grade}
+                            </span>
+                            <span className="text-[11px] text-text-muted hidden sm:inline">
+                              {healthLevelLabel}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <Button
+                            variant={isCurrent ? 'primary' : 'outline'}
+                            size="sm"
+                            icon={isCurrent ? 'Check' : 'Activity'}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectRepo(repo.full_name);
+                            }}
+                          >
+                            {isCurrent ? 'Đang xem' : 'Phân tích'}
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        {/* Pagination */}
+        <Pagination
+          currentPage={tablePage}
+          totalPages={tableTotalPages}
+          totalCount={tableTotalCount}
+          pageSize={tablePageSize}
+          pageSizeOptions={[5, 10, 20, 50]}
+          onPageChange={setTablePage}
+          onPageSizeChange={(sz) => {
+            setTablePageSize(sz);
+            setTablePage(1);
+          }}
+          disabled={isTableLoading}
+        />
       </div>
 
       {searchError && (
@@ -372,7 +747,7 @@ export const RepoHealth: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <span className="font-semibold text-text-main">{s.label}</span>
                         <Badge variant={s.valid ? 'success' : 'reputation'} size="sm">
-                          {s.valid ? 'Đạt chuẩn ✓' : 'Chưa có ⚠'}
+                          {s.valid ? 'Đạt chuẩn' : 'Chưa có'}
                         </Badge>
                       </div>
                       <span className="text-[11px] text-text-subtle">{s.desc}</span>
@@ -566,8 +941,9 @@ export const RepoHealth: React.FC = () => {
               </div>
               <div>
                 <span className="text-[10px] text-text-subtle block">Biến động 12 tuần</span>
-                <span className={`font-bold font-mono ${isTrendUp ? 'text-status-success' : 'text-status-danger'}`}>
-                  {isTrendUp ? '↗ +' : '↘ '}{deltaHealth} điểm
+                <span className={`font-bold font-mono flex items-center gap-1 ${isTrendUp ? 'text-status-success' : 'text-status-danger'}`}>
+                  <AppIcon name={isTrendUp ? 'trendingUp' : 'trendingDown'} size={12} />
+                  {isTrendUp ? '+' : ''}{deltaHealth} điểm
                 </span>
               </div>
               <div>

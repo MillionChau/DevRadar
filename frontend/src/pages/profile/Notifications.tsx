@@ -107,7 +107,7 @@ export const Notifications: React.FC = () => {
       case 'mention':
         return <AppIcon name="AtSign" size={18} className="text-brand-primary" />;
       case 'system':
-        return <AppIcon name="Sparkles" size={18} className="text-status-warning" />;
+        return <AppIcon name="Info" size={18} className="text-status-warning" />;
       case 'report_resolved':
       case 'ModerationAlert':
         return <AppIcon name="ShieldCheck" size={18} className="text-status-success" />;
