@@ -248,12 +248,12 @@ export const AdminCrawler: React.FC = () => {
       if (res && res.status === 'success') {
         setSaveMessage({
           type: 'success',
-          text: '✓ Cấu hình đã được lưu vào crawl_config.json & Cronjob daemon đã điều chỉnh lịch trình lập tức!',
+          text: 'Cấu hình đã được lưu vào crawl_config.json & Cronjob daemon đã điều chỉnh lịch trình lập tức!',
         });
       } else {
         setSaveMessage({
           type: 'success',
-          text: '✓ Đã cập nhật thành công cấu hình Crawler!',
+          text: 'Đã cập nhật thành công cấu hình Crawler!',
         });
       }
       await fetchCrawlerConfig();
@@ -1152,9 +1152,10 @@ export const AdminCrawler: React.FC = () => {
                         href={`https://github.com/${r}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-brand-primary hover:underline text-[11px]"
+                        className="inline-flex items-center gap-1 text-brand-primary hover:underline text-[11px]"
                       >
-                        Mở GitHub ↗
+                        <span>Mở GitHub</span>
+                        <AppIcon name="externalLink" size={11} />
                       </a>
                     </li>
                   ))}

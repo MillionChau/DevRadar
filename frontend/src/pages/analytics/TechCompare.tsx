@@ -111,14 +111,14 @@ export const TechCompare: React.FC = () => {
     },
     {
       metric: 'Tổng Stars GitHub Cộng đồng (Stars)',
-      a: t1?.total_stars ? `★ ${t1.total_stars}` : '—',
-      b: t2?.total_stars ? `★ ${t2.total_stars}` : '—',
+      a: t1?.total_stars ? `${t1.total_stars} stars` : '—',
+      b: t2?.total_stars ? `${t2.total_stars} stars` : '—',
       winner: (t1?.raw_stars ?? 0) >= (t2?.raw_stars ?? 0) ? 'A' : 'B',
     },
     {
       metric: 'Lượt Forks & Phân nhánh (Forks)',
-      a: t1?.total_forks ? `⑂ ${t1.total_forks}` : '—',
-      b: t2?.total_forks ? `⑂ ${t2.total_forks}` : '—',
+      a: t1?.total_forks ? `${t1.total_forks} forks` : '—',
+      b: t2?.total_forks ? `${t2.total_forks} forks` : '—',
       winner: (t1?.raw_forks ?? 0) >= (t2?.raw_forks ?? 0) ? 'A' : 'B',
     },
     {
@@ -261,8 +261,9 @@ export const TechCompare: React.FC = () => {
                   <td className="py-3.5 px-4 font-mono font-bold text-text-main">{row.a}</td>
                   <td className="py-3.5 px-4 font-mono font-bold text-text-main">{row.b}</td>
                   <td className="py-3.5 px-4 text-right">
-                    <Badge variant={row.winner === 'A' ? 'tech' : 'reputation'} size="sm">
-                      ✓ {winnerName}
+                    <Badge variant={row.winner === 'A' ? 'tech' : 'reputation'} size="sm" className="inline-flex items-center gap-1">
+                      <AppIcon name="check" size={10} />
+                      <span>{winnerName}</span>
                     </Badge>
                   </td>
                 </tr>

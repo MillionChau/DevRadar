@@ -80,8 +80,8 @@ export const AnalyticsReports: React.FC = () => {
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-surface-border">
         {[
           { key: 'all', label: 'Tất cả Báo cáo' },
-          { key: 'MONTHLY_TREND', label: '📅 Xu hướng Tháng' },
-          { key: 'REPOSITORY', label: '🔍 Đánh giá Kho mã nguồn' },
+          { key: 'MONTHLY_TREND', label: 'Xu hướng Tháng' },
+          { key: 'REPOSITORY', label: 'Đánh giá Kho mã nguồn' },
           { key: 'LANGUAGE', label: 'Ngôn ngữ Lập trình' },
           { key: 'FRAMEWORK', label: 'Framework' },
           { key: 'DEVOPS', label: 'DevOps & Cloud' },
@@ -124,12 +124,12 @@ export const AnalyticsReports: React.FC = () => {
             <div className="flex flex-col gap-2.5">
               <div className="flex items-center justify-between">
                 {rep.category === 'MONTHLY_TREND' ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
-                    📅 Xu hướng Tháng
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
+                    <AppIcon name="calendar" size={11} /> Xu hướng Tháng
                   </span>
                 ) : rep.category === 'REPOSITORY' ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
-                    🔍 Đánh giá Repo
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
+                    <AppIcon name="search" size={11} /> Đánh giá Repo
                   </span>
                 ) : (
                   <Badge variant="reputation" size="sm">

@@ -314,7 +314,7 @@ export const AdminTechZones: React.FC = () => {
                 <option value="Layers">Layers</option>
                 <option value="Terminal">Terminal</option>
                 <option value="Database">Database</option>
-                <option value="Sparkles">Sparkles</option>
+                <option value="Shield">Shield</option>
                 <option value="Code2">Code2</option>
                 <option value="Boxes">Boxes</option>
                 <option value="Network">Network</option>

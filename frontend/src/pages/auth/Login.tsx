@@ -108,23 +108,26 @@ export const Login: React.FC = () => {
             <button
               type="button"
               onClick={() => handleQuickFill('admin@devradar.io')}
-              className="px-2.5 py-1 text-[11px] bg-status-danger/10 text-status-danger hover:bg-status-danger/20 rounded border border-status-danger/30 transition-colors font-medium"
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] bg-status-danger/10 text-status-danger hover:bg-status-danger/20 rounded border border-status-danger/30 transition-colors font-medium"
             >
-              🛡️ Admin
+              <AppIcon name="shield" size={12} />
+              <span>Admin</span>
             </button>
             <button
               type="button"
               onClick={() => handleQuickFill('moderator@devradar.io')}
-              className="px-2.5 py-1 text-[11px] bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 rounded border border-amber-500/30 transition-colors font-medium"
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 rounded border border-amber-500/30 transition-colors font-medium"
             >
-              ⚖️ Moderator
+              <AppIcon name="award" size={12} />
+              <span>Moderator</span>
             </button>
             <button
               type="button"
               onClick={() => handleQuickFill('chautantan@devradar.io')}
-              className="px-2.5 py-1 text-[11px] bg-brand-primary/10 text-brand-secondary hover:bg-brand-primary/20 rounded border border-brand-primary/30 transition-colors font-medium"
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] bg-brand-primary/10 text-brand-secondary hover:bg-brand-primary/20 rounded border border-brand-primary/30 transition-colors font-medium"
             >
-              👤 Member
+              <AppIcon name="user" size={12} />
+              <span>Member</span>
             </button>
           </div>
         </div>

@@ -319,8 +319,8 @@ export const TechZones: React.FC = () => {
                   {zone.description}
                 </p>
                 <div className="flex items-center gap-4 text-xs text-text-subtle pt-1 font-medium">
-                  <span>📄 {zonePosts.length || zone.postCount} bài viết chuyên sâu</span>
-                  <span>👥 {(zone.followerCount || 0).toLocaleString()} người theo dõi</span>
+                  <span className="inline-flex items-center gap-1.5"><AppIcon name="fileText" size={13} /> {zonePosts.length || zone.postCount} bài viết chuyên sâu</span>
+                  <span className="inline-flex items-center gap-1.5"><AppIcon name="users" size={13} /> {(zone.followerCount || 0).toLocaleString()} người theo dõi</span>
                 </div>
               </div>
             </div>

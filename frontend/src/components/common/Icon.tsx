@@ -5,6 +5,7 @@ import {
   Home,
   Compass,
   TrendingUp,
+  TrendingDown,
   Activity,
   Search,
   Bell,
@@ -25,6 +26,7 @@ import {
   Star,
   GitFork,
   GitBranch,
+  GitPullRequest,
   Share2,
   Check,
   CheckCheck,
@@ -40,10 +42,15 @@ import {
   Download,
   Filter,
   RefreshCw,
+  RotateCw,
+  RotateCcw,
   Lock,
   Unlock,
   Mail,
   ArrowRight,
+  ArrowLeft,
+  ArrowUp,
+  ArrowDown,
   ExternalLink,
   Menu,
   X,
@@ -58,10 +65,13 @@ import {
   Layers,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
+  ChevronUp,
+  ChevronsLeft,
+  ChevronsRight,
   Send,
   Flag,
   Award,
-  Sparkles,
   Terminal,
   Database,
   Boxes,
@@ -83,7 +93,25 @@ import {
   Sprout,
   Sun,
   Moon,
-  Monitor
+  Monitor,
+  Camera,
+  Phone,
+  MapPin,
+  FolderGit2,
+  FolderGit,
+  Folder,
+  History,
+  Grid,
+  LayoutGrid,
+  BookOpen,
+  Book,
+  Sliders,
+  SlidersHorizontal,
+  Calendar,
+  Clock,
+  Table,
+  Link as LinkIcon,
+  Minus
 } from 'lucide';
 
 // Official GitHub SVG on 24x24 grid for Morphicons compatibility
@@ -212,14 +240,62 @@ export const ICON_MAP: Record<string, any> = {
   ChevronDown: ChevronDown,
   chevronRight: ChevronRight,
   ChevronRight: ChevronRight,
+  chevronLeft: ChevronLeft,
+  ChevronLeft: ChevronLeft,
+  chevronUp: ChevronUp,
+  ChevronUp: ChevronUp,
+  chevronsLeft: ChevronsLeft,
+  ChevronsLeft: ChevronsLeft,
+  chevronsRight: ChevronsRight,
+  ChevronsRight: ChevronsRight,
+  arrowLeft: ArrowLeft,
+  ArrowLeft: ArrowLeft,
+  arrowUp: ArrowUp,
+  ArrowUp: ArrowUp,
+  arrowDown: ArrowDown,
+  ArrowDown: ArrowDown,
+  camera: Camera,
+  Camera: Camera,
+  phone: Phone,
+  Phone: Phone,
+  mapPin: MapPin,
+  MapPin: MapPin,
+  'map-pin': MapPin,
+  folderGit2: FolderGit2,
+  FolderGit2: FolderGit2,
+  folderGit: FolderGit,
+  FolderGit: FolderGit,
+  folder: Folder,
+  Folder: Folder,
+  history: History,
+  History: History,
+  rotateCw: RotateCw,
+  RotateCw: RotateCw,
+  rotateCcw: RotateCcw,
+  RotateCcw: RotateCcw,
+  grid: Grid,
+  Grid: Grid,
+  layoutGrid: LayoutGrid,
+  LayoutGrid: LayoutGrid,
+  bookOpen: BookOpen,
+  BookOpen: BookOpen,
+  book: Book,
+  Book: Book,
+  trendingUp: TrendingUp,
+  trendingDown: TrendingDown,
+  TrendingDown: TrendingDown,
+  gitPullRequest: GitPullRequest,
+  GitPullRequest: GitPullRequest,
+  sliders: Sliders,
+  Sliders: Sliders,
+  slidersHorizontal: SlidersHorizontal,
+  SlidersHorizontal: SlidersHorizontal,
   send: Send,
   Send: Send,
   flag: Flag,
   Flag: Flag,
   award: Award,
   Award: Award,
-  sparkles: Sparkles,
-  Sparkles: Sparkles,
   terminal: Terminal,
   Terminal: Terminal,
   database: Database,
@@ -263,7 +339,37 @@ export const ICON_MAP: Record<string, any> = {
   moon: Moon,
   Moon: Moon,
   monitor: Monitor,
-  Monitor: Monitor
+  Monitor: Monitor,
+  calendar: Calendar,
+  Calendar: Calendar,
+  clock: Clock,
+  Clock: Clock,
+  table: Table,
+  Table: Table,
+  link: LinkIcon,
+  Link: LinkIcon,
+  minus: Minus,
+  Minus: Minus
+};
+
+// Helper to normalize any icon key (lowercase, removes hyphens, underscores, spaces)
+const normalizeIconKey = (key: string): string => {
+  return (key || '').toLowerCase().replace(/[-_\s]/g, '');
+};
+
+// Normalized lookup map to ensure case-insensitive and format-agnostic resolution
+const NORMALIZED_ICON_MAP: Record<string, any> = {};
+Object.entries(ICON_MAP).forEach(([key, val]) => {
+  NORMALIZED_ICON_MAP[normalizeIconKey(key)] = val;
+});
+
+/** Resolves any icon name with case-insensitivity and alias normalization */
+export const getIcon = (name: string): any => {
+  if (!name) return null;
+  if (ICON_MAP[name]) return ICON_MAP[name];
+  const normalized = normalizeIconKey(name);
+  if (NORMALIZED_ICON_MAP[normalized]) return NORMALIZED_ICON_MAP[normalized];
+  return null;
 };
 
 export type IconName = string;
@@ -296,9 +402,11 @@ export const AppIcon: React.FC<AppIconProps> = ({
   label,
   onClick
 }) => {
-  const primaryIcon = ICON_MAP[name] || ICON_MAP['activity'] || Activity;
-  const targetIcon = activeName ? (ICON_MAP[activeName] || primaryIcon) : primaryIcon;
+  const primaryIcon = getIcon(name);
+  const targetIcon = activeName ? getIcon(activeName) : primaryIcon;
   const currentIcon = active ? targetIcon : primaryIcon;
+
+  if (!currentIcon) return null;
 
   return (
     <MorphIcon

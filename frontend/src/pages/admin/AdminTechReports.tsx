@@ -280,7 +280,7 @@ export const AdminTechReports: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" icon="Sparkles" onClick={handleOpenAIModal}>
+          <Button variant="secondary" size="sm" icon="fileText" onClick={handleOpenAIModal}>
             AI Sinh báo cáo
           </Button>
           <Button variant="primary" size="sm" icon="plus" onClick={handleOpenCreateModal}>
@@ -346,8 +346,8 @@ export const AdminTechReports: React.FC = () => {
             className="bg-surface-elevated border border-surface-border text-text-main text-xs rounded-btn px-2.5 h-8 focus:outline-none"
           >
             <option value="all">Mọi chuyên mục</option>
-            <option value="MONTHLY_TREND">📅 Xu hướng Tháng</option>
-            <option value="REPOSITORY">🔍 Đánh giá Repo</option>
+            <option value="MONTHLY_TREND">Xu hướng Tháng</option>
+            <option value="REPOSITORY">Đánh giá Repo</option>
             <option value="TREND">Xu hướng Chung</option>
             <option value="LANGUAGE">Ngôn ngữ</option>
             <option value="FRAMEWORK">Framework</option>
@@ -417,12 +417,14 @@ export const AdminTechReports: React.FC = () => {
 
                     <td className="py-3 px-3 whitespace-nowrap">
                       {rep.category === 'MONTHLY_TREND' ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/25">
-                          📅 Xu hướng Tháng
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/25">
+                          <AppIcon name="calendar" size={12} />
+                          Xu hướng Tháng
                         </span>
                       ) : rep.category === 'REPOSITORY' ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/25">
-                          🔍 Đánh giá Repo
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/25">
+                          <AppIcon name="search" size={12} />
+                          Đánh giá Repo
                         </span>
                       ) : (
                         <Badge variant="tech" size="sm">
@@ -714,7 +716,7 @@ export const AdminTechReports: React.FC = () => {
             {aiSuggestions.length > 0 && (
               <div className="space-y-1.5">
                 <span className="text-[11px] font-semibold text-brand-secondary uppercase inline-flex items-center gap-1">
-                  <AppIcon name="Sparkles" size={13} className="text-amber-400" />
+                  <AppIcon name="fileText" size={13} className="text-brand-secondary" />
                   <span>Gợi ý chủ đề nổi bật từ dữ liệu:</span>
                 </span>
                 <div className="flex flex-col gap-1.5">
@@ -776,8 +778,8 @@ export const AdminTechReports: React.FC = () => {
                   className="w-full bg-surface-elevated border border-surface-border rounded-btn px-3 py-2 text-xs text-text-main focus:outline-none"
                 >
                   <option value="TREND">Xu hướng Chung</option>
-                  <option value="MONTHLY_TREND">📅 Báo cáo Xu hướng Tháng</option>
-                  <option value="REPOSITORY">🔍 Đánh giá Kho mã nguồn (Repository)</option>
+                  <option value="MONTHLY_TREND">Báo cáo Xu hướng Tháng</option>
+                  <option value="REPOSITORY">Đánh giá Kho mã nguồn (Repository)</option>
                   <option value="LANGUAGE">Ngôn ngữ Lập trình</option>
                   <option value="FRAMEWORK">Framework & Thư viện</option>
                   <option value="DEVOPS">DevOps & Cloud Native</option>
@@ -844,7 +846,7 @@ export const AdminTechReports: React.FC = () => {
                 >
                   {monitoredRepos.map((r, idx) => (
                     <option key={idx} value={r.full_name}>
-                      {r.full_name} ({r.stars?.toLocaleString()} ⭐ — {r.primary_language} — Health: {r.health_score || 85}/100)
+                      {r.full_name} ({r.stars?.toLocaleString()} stars — {r.primary_language} — Health: {r.health_score || 85}/100)
                     </option>
                   ))}
                 </select>

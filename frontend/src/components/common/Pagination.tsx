@@ -100,7 +100,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           className="p-1.5 rounded hover:bg-surface-elevated text-text-muted hover:text-text-main disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           title="Trang đầu"
         >
-          <AppIcon name="chevronLeft" size={14} className="stroke-[2.5]" />
+          <AppIcon name="chevronsLeft" size={14} className="stroke-[2.5]" />
           <span className="sr-only">Trang đầu</span>
         </button>
 
@@ -168,7 +168,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           className="p-1.5 rounded hover:bg-surface-elevated text-text-muted hover:text-text-main disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           title="Trang cuối"
         >
-          <AppIcon name="chevronRight" size={14} className="stroke-[2.5]" />
+          <AppIcon name="chevronsRight" size={14} className="stroke-[2.5]" />
           <span className="sr-only">Trang cuối</span>
         </button>
       </div>

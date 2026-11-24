@@ -142,7 +142,7 @@ app.MapReverseProxy(proxyPipeline => {
             onClick={handleSave}
             tooltip="Lưu và áp dụng các cập nhật cho bài viết"
           >
-            Lưu thay đổi ✓
+            Lưu thay đổi
           </Button>
         </div>
       </div>

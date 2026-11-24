@@ -644,7 +644,7 @@ export const AdminPosts: React.FC = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            icon="Sparkles"
+                            icon="refresh"
                             onClick={() => handleRecheckAI(p.id)}
                             tooltip="Tái phân tích chất lượng & độc hại với AI Engine"
                           />
@@ -817,8 +817,9 @@ export const AdminPosts: React.FC = () => {
                             {c.content}
                           </div>
                           {isFlagged && (
-                            <span className="inline-block mt-1 text-[11px] px-1.5 py-0.5 rounded bg-accent-danger/20 text-accent-danger font-semibold">
-                              ⚠️ Chứa nội dung vi phạm tiêu chuẩn cộng đồng (độc hại / thô tục)
+                            <span className="inline-flex items-center gap-1 mt-1 text-[11px] px-1.5 py-0.5 rounded bg-accent-danger/20 text-accent-danger font-semibold">
+                              <AppIcon name="alertTriangle" size={11} />
+                              <span>Chứa nội dung vi phạm tiêu chuẩn cộng đồng (độc hại / thô tục)</span>
                             </span>
                           )}
                         </td>
@@ -1017,9 +1018,10 @@ export const AdminPosts: React.FC = () => {
                           {r.postId && (
                             <Link
                               to={`/feed/${r.postId}`}
-                              className="text-[11px] text-primary-blue hover:underline mt-0.5 block"
+                              className="inline-flex items-center gap-1 text-[11px] text-primary-blue hover:underline mt-0.5"
                             >
-                              Xem bài viết gốc →
+                              <span>Xem bài viết gốc</span>
+                              <AppIcon name="arrowRight" size={11} />
                             </Link>
                           )}
                         </td>
